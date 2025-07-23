@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gestão de Beleza - MVP</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>💇‍♀️ Gestão de Beleza</h1>
+  </header>
+
+  <main>
+    <section class="form-section">
+      <h2>Agendar Cliente</h2>
+      <form id="form-agendamento">
+        <input type="text" id="nome" placeholder="Nome do cliente" required />
+        <input type="datetime-local" id="horario" required />
+        <button type="submit">Agendar</button>
+      </form>
+    </section>
+
+    <section class="agenda">
+      <h2>Horários Agendados</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Horário</th>
+          </tr>
+        </thead>
+        <tbody id="lista-agendamentos">
+          <!-- Agendamentos aparecem aqui -->
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
