@@ -64,28 +64,28 @@ let currentClientView = null;
 let currentAppointmentView = null;
 
 // Inicialização do sistema
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Carrega dados do localStorage se existirem
     loadFromLocalStorage();
-    
+
     // Configura elementos da interface
     setupUI();
-    
+
     // Exibe a semana atual
     displayWeek(currentWeek);
-    
+
     // Carrega lista de clientes
     displayClientList();
-    
+
     // Carrega lista de produtos
     displayProductList();
-    
+
     // Carrega alertas de estoque
     displayStockAlerts();
-    
+
     // Configura gráfico de relatórios
     setupReportsChart();
-    
+
     // Exibe informações do usuário
     displayUserInfo();
 });
@@ -95,92 +95,102 @@ function setupUI() {
     // Navegação entre seções
     const menuItems = document.querySelectorAll('.sidebar nav li');
     menuItems.forEach(item => {
-        item.addEventListener('click', function() {
+        item.addEventListener('click', function () {
             // Remove a classe active de todos os itens
             menuItems.forEach(i => i.classList.remove('active'));
-            
+
             // Adiciona a classe active ao item clicado
             this.classList.add('active');
-            
+
             // Oculta todas as seções de conteúdo
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
             });
-            
+
             // Exibe a seção correspondente
             const sectionId = this.getAttribute('data-section') + '-section';
             document.getElementById(sectionId).classList.add('active');
         });
     });
-    
+
     // Navegação entre abas nas configurações
     const tabButtons = document.querySelectorAll('.tab-btn');
     tabButtons.forEach(button => {
-        button.addEventListener('click', function() {
+        button.addEventListener('click', function () {
             // Remove a classe active de todos os botões
             tabButtons.forEach(btn => btn.classList.remove('active'));
-            
+
             // Adiciona a classe active ao botão clicado
             this.classList.add('active');
-            
+
             // Oculta todas as abas de conteúdo
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
-            
+
             // Exibe a aba correspondente
             const tabId = this.getAttribute('data-tab') + '-tab';
             document.getElementById(tabId).classList.add('active');
         });
     });
-    
-    // Navegação entre semanas na agenda
-    document.getElementById('prev-week').addEventListener('click', function() {
+
+    // Botão de navegação para a semana anterior
+    document.getElementById('prev-week').addEventListener('click', function () {
         currentWeek--;
         displayWeek(currentWeek);
     });
-    
-    document.getElementById('next-week').addEventListener('click', function() {
+    // Botão de navegação para a próxima semana
+    document.getElementById('next-week').addEventListener('click', function () {
         currentWeek++;
         displayWeek(currentWeek);
     });
-    
+    // Botão de navegação para a semana atual
+    document.getElementById('current-week').addEventListener('click', function () {
+        currentWeek = 0;
+        displayWeek(currentWeek);
+    });
+    // Botão de navegação para a agenda
+    document.getElementById('agenda-btn').addEventListener('click', function () {
+        currentWeek = 0; // Reseta para a semana atual
+        displayWeek(currentWeek);
+    });
+
     // Botão de logout
-    document.getElementById('logout-btn').addEventListener('click', function() {
+    document.getElementById('logout-btn').addEventListener('click', function () {
         if (confirm('Deseja realmente sair do sistema?')) {
             // Aqui normalmente teria uma lógica de logout
             alert('Você foi desconectado do sistema');
         }
     });
-    
+
     // Botão para gerar link do WhatsApp
     document.getElementById('whatsapp-btn').addEventListener('click', generateWhatsAppLink);
     document.getElementById('copy-link').addEventListener('click', copyWhatsAppLink);
-    
+
     // Botão para adicionar bloqueio de horário
     document.getElementById('add-block').addEventListener('click', showAddBlockModal);
-    
+
     // Botão para sincronizar agenda com salão
     document.getElementById('sync-agenda').addEventListener('click', syncWithSalon);
-    
+
     // Botão para adicionar cliente
     document.getElementById('add-client').addEventListener('click', showAddClientModal);
-    
+
     // Busca de clientes
     document.getElementById('client-search').addEventListener('input', searchClients);
-    
+
     // Botão para adicionar produto
     document.getElementById('add-product').addEventListener('click', showAddProductModal);
-    
+
     // Botão para registrar venda
     document.getElementById('record-sale').addEventListener('click', showRecordSaleModal);
-    
+
     // Botão para gerar relatório
     document.getElementById('generate-report').addEventListener('click', generateReport);
-    
+
     // Configuração do modal genérico
     setupGenericModal();
-    
+
     // Configuração dos formulários
     setupForms();
 }
@@ -189,82 +199,87 @@ function setupUI() {
 function displayWeek(weekOffset) {
     const today = new Date();
     const currentDay = today.getDay(); // 0 = Domingo, 1 = Segunda, etc.
-    
+
     // Ajusta a data para o início da semana (Segunda-feira)
     const startDate = new Date(today);
     startDate.setDate(today.getDate() - currentDay + 1 + (weekOffset * 7));
-    
+
     // Atualiza o título da semana
     const endDate = new Date(startDate);
     endDate.setDate(startDate.getDate() + 6);
-    
+
     const options = { day: 'numeric', month: 'long' };
     const startStr = startDate.toLocaleDateString('pt-BR', options);
     const endStr = endDate.toLocaleDateString('pt-BR', options);
-    
+
     document.getElementById('current-week').textContent = `${startStr} - ${endStr}`;
-    
+
     // Limpa o calendário
     const calendar = document.querySelector('.calendar');
     calendar.innerHTML = '';
-    
-    // Adiciona cabeçalhos dos dias
+
+    // Dias da semana
     const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
-    daysOfWeek.forEach(day => {
-        const dayHeader = document.createElement('div');
-        dayHeader.className = 'day-header';
-        dayHeader.textContent = day;
-        calendar.appendChild(dayHeader);
-    });
-    
-    // Adiciona os slots de tempo para cada dia
+
+    // Cria um container para cada dia da semana
     for (let i = 0; i < 7; i++) {
         const currentDate = new Date(startDate);
         currentDate.setDate(startDate.getDate() + i);
-        
+
         const dateStr = formatDate(currentDate);
+        const dayContainer = document.createElement('div');
+        dayContainer.className = 'day-container';
+
+        // Cria o cabeçalho do dia
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'day-header';
+        dayHeader.textContent = `${daysOfWeek[i]} (${currentDate.getDate()}/${currentDate.getMonth() + 1})`;
+        dayContainer.appendChild(dayHeader);
+
+        // Cria os slots de tempo para o dia
         const daySlots = document.createElement('div');
         daySlots.className = 'time-slots';
         daySlots.setAttribute('data-date', dateStr);
-        
+
         // Horários de trabalho: 9h às 18h, com intervalos de 30 minutos
         for (let hour = 9; hour < 18; hour++) {
             for (let minute = 0; minute < 60; minute += 30) {
                 const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
                 const slotId = `${dateStr}-${timeStr}`;
-                
+
                 const slot = document.createElement('div');
                 slot.className = 'time-slot available';
                 slot.textContent = timeStr;
                 slot.setAttribute('data-time', timeStr);
                 slot.setAttribute('data-slot-id', slotId);
-                
+
                 // Verifica se há um agendamento neste horário
-                const appointment = systemData.appointments.find(a => 
+                const appointment = systemData.appointments.find(a =>
                     a.date === dateStr && a.time === timeStr
                 );
-                
+
                 if (appointment) {
                     slot.classList.remove('available');
                     slot.classList.add(appointment.status === 'booked' ? 'booked' : 'blocked');
-                    
+
                     if (appointment.status === 'booked') {
                         const client = systemData.clients.find(c => c.id === appointment.clientId);
                         slot.textContent = `${timeStr} - ${client.name} (${appointment.service})`;
                     } else {
                         slot.textContent = `${timeStr} - ${appointment.service}`;
                     }
-                    
+
                     slot.addEventListener('click', () => showAppointmentDetails(appointment.id));
                 } else {
                     slot.addEventListener('click', () => showBookAppointmentModal(dateStr, timeStr));
                 }
-                
+
                 daySlots.appendChild(slot);
             }
         }
-        
-        calendar.appendChild(daySlots);
+
+        dayContainer.appendChild(daySlots);
+        calendar.appendChild(dayContainer);
     }
 }
 
@@ -280,16 +295,16 @@ function formatDate(date) {
 function showAppointmentDetails(appointmentId) {
     const appointment = systemData.appointments.find(a => a.id === appointmentId);
     if (!appointment) return;
-    
+
     const client = systemData.clients.find(c => c.id === appointment.clientId);
     const detailsDiv = document.getElementById('appointment-details');
-    
+
     let html = `
         <h3>Detalhes do Agendamento</h3>
         <p><strong>Data:</strong> ${formatDisplayDate(appointment.date)}</p>
         <p><strong>Horário:</strong> ${appointment.time}</p>
     `;
-    
+
     if (appointment.status === 'booked') {
         html += `
             <p><strong>Cliente:</strong> ${client.name}</p>
@@ -307,25 +322,25 @@ function showAppointmentDetails(appointmentId) {
             </div>
         `;
     }
-    
+
     detailsDiv.innerHTML = html;
     detailsDiv.classList.remove('hidden');
-    
+
     // Configura eventos dos botões
     if (appointment.status === 'booked') {
-        document.getElementById('cancel-appointment').addEventListener('click', function() {
+        document.getElementById('cancel-appointment').addEventListener('click', function () {
             cancelAppointment(this.getAttribute('data-id'));
         });
-        
-        document.getElementById('reschedule-appointment').addEventListener('click', function() {
+
+        document.getElementById('reschedule-appointment').addEventListener('click', function () {
             showRescheduleModal(this.getAttribute('data-id'));
         });
     } else {
-        document.getElementById('remove-block').addEventListener('click', function() {
+        document.getElementById('remove-block').addEventListener('click', function () {
             removeBlock(this.getAttribute('data-id'));
         });
     }
-    
+
     currentAppointmentView = appointmentId;
 }
 
@@ -374,27 +389,27 @@ function showAddBlockModal() {
             <input type="text" id="block-reason" placeholder="Ex.: Folga, Compromisso pessoal" required>
         </div>
     `;
-    
+
     showModal(modalTitle, modalBody, 'Adicionar', () => {
         const date = document.getElementById('block-date').value;
         const time = document.getElementById('block-time').value;
         const reason = document.getElementById('block-reason').value;
-        
+
         if (!date || !time || !reason) {
             alert('Preencha todos os campos!');
             return false;
         }
-        
+
         // Verifica se já existe um agendamento neste horário
-        const existingAppointment = systemData.appointments.find(a => 
+        const existingAppointment = systemData.appointments.find(a =>
             a.date === date && a.time === time
         );
-        
+
         if (existingAppointment) {
             alert('Já existe um agendamento ou bloqueio neste horário!');
             return false;
         }
-        
+
         // Cria novo bloqueio
         const newBlock = {
             id: generateId(),
@@ -403,11 +418,11 @@ function showAddBlockModal() {
             service: reason,
             status: 'blocked'
         };
-        
+
         systemData.appointments.push(newBlock);
         saveToLocalStorage();
         displayWeek(currentWeek);
-        
+
         return true;
     });
 }
@@ -439,21 +454,21 @@ function showBookAppointmentModal(date, time) {
             </datalist>
         </div>
     `;
-    
+
     showModal(modalTitle, modalBody, 'Agendar', () => {
         const clientId = document.getElementById('appointment-client').value;
         const service = document.getElementById('appointment-service').value;
-        
+
         if (clientId === 'new') {
             alert('Por favor, cadastre o cliente primeiro na seção de Clientes');
             return false;
         }
-        
+
         if (!clientId || !service) {
             alert('Preencha todos os campos!');
             return false;
         }
-        
+
         // Cria novo agendamento
         const newAppointment = {
             id: generateId(),
@@ -463,15 +478,15 @@ function showBookAppointmentModal(date, time) {
             service,
             status: 'booked'
         };
-        
+
         systemData.appointments.push(newAppointment);
         saveToLocalStorage();
         displayWeek(currentWeek);
-        
+
         // Envia confirmação (simulado)
         const client = systemData.clients.find(c => c.id === parseInt(clientId));
         alert(`Agendamento confirmado para ${client.name} às ${time} do dia ${formatDisplayDate(date)}`);
-        
+
         return true;
     });
 }
@@ -480,10 +495,10 @@ function showBookAppointmentModal(date, time) {
 function showRescheduleModal(appointmentId) {
     const appointment = systemData.appointments.find(a => a.id === parseInt(appointmentId));
     if (!appointment) return;
-    
+
     const client = systemData.clients.find(c => c.id === appointment.clientId);
     const modalTitle = `Remarcar Agendamento - ${client.name}`;
-    
+
     const modalBody = `
         <p>Agendamento atual: ${formatDisplayDate(appointment.date)} ${appointment.time} - ${appointment.service}</p>
         <div class="form-group">
@@ -495,36 +510,36 @@ function showRescheduleModal(appointmentId) {
             <input type="time" id="new-time" step="1800" required>
         </div>
     `;
-    
+
     showModal(modalTitle, modalBody, 'Remarcar', () => {
         const newDate = document.getElementById('new-date').value;
         const newTime = document.getElementById('new-time').value;
-        
+
         if (!newDate || !newTime) {
             alert('Preencha todos os campos!');
             return false;
         }
-        
+
         // Verifica se já existe um agendamento neste novo horário
-        const existingAppointment = systemData.appointments.find(a => 
+        const existingAppointment = systemData.appointments.find(a =>
             a.date === newDate && a.time === newTime && a.id !== appointment.id
         );
-        
+
         if (existingAppointment) {
             alert('Já existe um agendamento ou bloqueio neste horário!');
             return false;
         }
-        
+
         // Atualiza o agendamento
         appointment.date = newDate;
         appointment.time = newTime;
         saveToLocalStorage();
         displayWeek(currentWeek);
         document.getElementById('appointment-details').classList.add('hidden');
-        
+
         // Envia confirmação (simulado)
         alert(`Agendamento remarcado para ${newTime} do dia ${formatDisplayDate(newDate)}`);
-        
+
         return true;
     });
 }
@@ -538,19 +553,19 @@ function generateId() {
 function setupGenericModal() {
     const modal = document.getElementById('generic-modal');
     const closeBtn = document.querySelector('.close-modal');
-    
+
     // Fecha o modal ao clicar no X
     closeBtn.addEventListener('click', () => {
         modal.classList.add('hidden');
     });
-    
+
     // Fecha o modal ao clicar fora
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             modal.classList.add('hidden');
         }
     });
-    
+
     // Configura botão de cancelar
     document.getElementById('modal-cancel').addEventListener('click', () => {
         modal.classList.add('hidden');
@@ -562,12 +577,12 @@ function showModal(title, body, confirmText, confirmCallback) {
     document.getElementById('modal-title').textContent = title;
     document.getElementById('modal-body').innerHTML = body;
     document.getElementById('modal-confirm').textContent = confirmText;
-    
+
     const modal = document.getElementById('generic-modal');
     modal.classList.remove('hidden');
-    
+
     // Configura ação do botão de confirmar
-    document.getElementById('modal-confirm').onclick = function() {
+    document.getElementById('modal-confirm').onclick = function () {
         if (confirmCallback()) {
             modal.classList.add('hidden');
         }
@@ -578,7 +593,7 @@ function showModal(title, body, confirmText, confirmCallback) {
 function displayClientList() {
     const clientList = document.querySelector('.client-list');
     clientList.innerHTML = '';
-    
+
     systemData.clients.forEach(client => {
         const clientCard = document.createElement('div');
         clientCard.className = 'client-card';
@@ -588,7 +603,7 @@ function displayClientList() {
             <p><i class="fas fa-phone"></i> ${client.phone}</p>
             <p><i class="fas fa-calendar-alt"></i> Última visita: ${formatDisplayDate(client.lastVisit)}</p>
         `;
-        
+
         clientCard.addEventListener('click', () => showClientDetails(client.id));
         clientList.appendChild(clientCard);
     });
@@ -598,16 +613,16 @@ function displayClientList() {
 function showClientDetails(clientId) {
     const client = systemData.clients.find(c => c.id === parseInt(clientId));
     if (!client) return;
-    
+
     const details = systemData.clientDetails[clientId] || {
         hairType: 'Não informado',
         allergies: 'Nenhuma',
         productsUsed: [],
         history: []
     };
-    
+
     const detailsDiv = document.getElementById('client-details');
-    
+
     let html = `
         <div class="client-header">
             <h3>${client.name}</h3>
@@ -656,23 +671,23 @@ function showClientDetails(clientId) {
             <button id="send-promo" data-id="${client.id}"><i class="fas fa-gift"></i> Enviar Promoção</button>
         </div>
     `;
-    
+
     detailsDiv.innerHTML = html;
     detailsDiv.classList.remove('hidden');
-    
+
     // Configura eventos dos botões
-    document.getElementById('edit-client').addEventListener('click', function() {
+    document.getElementById('edit-client').addEventListener('click', function () {
         showEditClientModal(this.getAttribute('data-id'));
     });
-    
-    document.getElementById('new-service').addEventListener('click', function() {
+
+    document.getElementById('new-service').addEventListener('click', function () {
         showNewServiceModal(this.getAttribute('data-id'));
     });
-    
-    document.getElementById('send-promo').addEventListener('click', function() {
+
+    document.getElementById('send-promo').addEventListener('click', function () {
         sendPromotionToClient(this.getAttribute('data-id'));
     });
-    
+
     currentClientView = clientId;
 }
 
@@ -680,14 +695,14 @@ function showClientDetails(clientId) {
 function showEditClientModal(clientId) {
     const client = systemData.clients.find(c => c.id === parseInt(clientId));
     if (!client) return;
-    
+
     const details = systemData.clientDetails[clientId] || {
         hairType: '',
         allergies: '',
         productsUsed: [],
         history: []
     };
-    
+
     const modalTitle = `Editar Cliente - ${client.name}`;
     const modalBody = `
         <div class="form-group">
@@ -715,7 +730,7 @@ function showEditClientModal(clientId) {
             <textarea id="edit-products">${details.productsUsed.join(', ')}</textarea>
         </div>
     `;
-    
+
     showModal(modalTitle, modalBody, 'Salvar', () => {
         const name = document.getElementById('edit-name').value;
         const phone = document.getElementById('edit-phone').value;
@@ -723,17 +738,17 @@ function showEditClientModal(clientId) {
         const hairType = document.getElementById('edit-hair-type').value;
         const allergies = document.getElementById('edit-allergies').value;
         const products = document.getElementById('edit-products').value.split(',').map(p => p.trim());
-        
+
         if (!name || !phone) {
             alert('Nome e telefone são obrigatórios!');
             return false;
         }
-        
+
         // Atualiza dados do cliente
         client.name = name;
         client.phone = phone;
         client.email = email;
-        
+
         // Atualiza detalhes do cliente
         systemData.clientDetails[clientId] = {
             hairType,
@@ -741,14 +756,14 @@ function showEditClientModal(clientId) {
             productsUsed: products,
             history: details.history
         };
-        
+
         saveToLocalStorage();
         displayClientList();
-        
+
         if (currentClientView == clientId) {
             showClientDetails(clientId);
         }
-        
+
         return true;
     });
 }
@@ -778,31 +793,31 @@ function showAddClientModal() {
             <input type="text" id="new-allergies" value="Nenhuma">
         </div>
     `;
-    
+
     showModal(modalTitle, modalBody, 'Adicionar', () => {
         const name = document.getElementById('new-name').value;
         const phone = document.getElementById('new-phone').value;
         const email = document.getElementById('new-email').value;
         const hairType = document.getElementById('new-hair-type').value;
         const allergies = document.getElementById('new-allergies').value;
-        
+
         if (!name || !phone) {
             alert('Nome e telefone são obrigatórios!');
             return false;
         }
-        
+
         // Cria novo cliente
         const newClient = {
-            id: systemData.clients.length > 0 ? 
+            id: systemData.clients.length > 0 ?
                 Math.max(...systemData.clients.map(c => c.id)) + 1 : 1,
             name,
             phone,
             email,
             lastVisit: formatDate(new Date())
         };
-        
+
         systemData.clients.push(newClient);
-        
+
         // Adiciona detalhes do cliente
         systemData.clientDetails[newClient.id] = {
             hairType,
@@ -810,10 +825,10 @@ function showAddClientModal() {
             productsUsed: [],
             history: []
         };
-        
+
         saveToLocalStorage();
         displayClientList();
-        
+
         return true;
     });
 }
@@ -822,7 +837,7 @@ function showAddClientModal() {
 function showNewServiceModal(clientId) {
     const client = systemData.clients.find(c => c.id === parseInt(clientId));
     if (!client) return;
-    
+
     const modalTitle = `Registrar Serviço - ${client.name}`;
     const modalBody = `
         <div class="form-group">
@@ -842,18 +857,18 @@ function showNewServiceModal(clientId) {
             <textarea id="service-products" rows="2"></textarea>
         </div>
     `;
-    
+
     showModal(modalTitle, modalBody, 'Registrar', () => {
         const date = document.getElementById('service-date').value;
         const service = document.getElementById('service-type').value;
         const notes = document.getElementById('service-notes').value;
         const products = document.getElementById('service-products').value.split(',').map(p => p.trim());
-        
+
         if (!date || !service) {
             alert('Data e serviço são obrigatórios!');
             return false;
         }
-        
+
         // Adiciona ao histórico
         const details = systemData.clientDetails[clientId] || {
             hairType: '',
@@ -861,30 +876,30 @@ function showNewServiceModal(clientId) {
             productsUsed: [],
             history: []
         };
-        
+
         details.history.unshift({
             date,
             service,
             notes
         });
-        
+
         // Adiciona produtos usados (sem duplicatas)
         products.forEach(product => {
             if (product && !details.productsUsed.includes(product)) {
                 details.productsUsed.push(product);
             }
         });
-        
+
         // Atualiza última visita
         client.lastVisit = date;
-        
+
         systemData.clientDetails[clientId] = details;
         saveToLocalStorage();
-        
+
         if (currentClientView == clientId) {
             showClientDetails(clientId);
         }
-        
+
         return true;
     });
 }
@@ -893,7 +908,7 @@ function showNewServiceModal(clientId) {
 function sendPromotionToClient(clientId) {
     const client = systemData.clients.find(c => c.id === parseInt(clientId));
     if (!client) return;
-    
+
     alert(`Promoção enviada para ${client.name} (${client.phone}) via WhatsApp`);
     // Na implementação real, aqui seria feita a integração com a API do WhatsApp
 }
@@ -902,11 +917,11 @@ function sendPromotionToClient(clientId) {
 function searchClients() {
     const searchTerm = this.value.toLowerCase();
     const clientCards = document.querySelectorAll('.client-card');
-    
+
     clientCards.forEach(card => {
         const clientName = card.querySelector('h3').textContent.toLowerCase();
         const clientPhone = card.querySelector('p:nth-of-type(1)').textContent.toLowerCase();
-        
+
         if (clientName.includes(searchTerm) || clientPhone.includes(searchTerm)) {
             card.style.display = 'block';
         } else {
@@ -919,17 +934,17 @@ function searchClients() {
 function displayProductList() {
     const productList = document.querySelector('.product-list');
     productList.innerHTML = '';
-    
+
     systemData.products.forEach(product => {
         const productCard = document.createElement('div');
         productCard.className = 'product-card';
-        
+
         const isLowStock = product.quantity <= product.minQuantity;
         const stockClass = isLowStock ? 'stock-low' : 'stock-ok';
-        const stockText = isLowStock ? 
-            `⚠️ ${product.quantity} (mínimo: ${product.minQuantity})` : 
+        const stockText = isLowStock ?
+            `⚠️ ${product.quantity} (mínimo: ${product.minQuantity})` :
             `${product.quantity} em estoque`;
-        
+
         productCard.innerHTML = `
             <div class="product-info">
                 <h3>${product.name}</h3>
@@ -940,12 +955,12 @@ function displayProductList() {
                 <button class="edit-product" data-id="${product.id}"><i class="fas fa-edit"></i></button>
             </div>
         `;
-        
+
         productCard.querySelector('.edit-product').addEventListener('click', (e) => {
             e.stopPropagation();
             showEditProductModal(product.id);
         });
-        
+
         productList.appendChild(productCard);
     });
 }
@@ -954,14 +969,14 @@ function displayProductList() {
 function displayStockAlerts() {
     const alertsContainer = document.getElementById('alerts-container');
     alertsContainer.innerHTML = '';
-    
+
     const lowStockProducts = systemData.products.filter(p => p.quantity <= p.minQuantity);
-    
+
     if (lowStockProducts.length === 0) {
         alertsContainer.innerHTML = '<p class="no-alerts">Nenhum alerta de estoque baixo</p>';
         return;
     }
-    
+
     lowStockProducts.forEach(product => {
         const alertItem = document.createElement('div');
         alertItem.className = 'alert-item';
@@ -969,12 +984,12 @@ function displayStockAlerts() {
             <span>${product.name} - ${product.quantity} restantes (mínimo: ${product.minQuantity})</span>
             <button class="restock-btn" data-id="${product.id}">Repor</button>
         `;
-        
+
         alertItem.querySelector('.restock-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             showRestockModal(product.id);
         });
-        
+
         alertsContainer.appendChild(alertItem);
     });
 }
@@ -983,7 +998,7 @@ function displayStockAlerts() {
 function showEditProductModal(productId) {
     const product = systemData.products.find(p => p.id === parseInt(productId));
     if (!product) return;
-    
+
     const modalTitle = `Editar Produto - ${product.name}`;
     const modalBody = `
         <div class="form-group">
@@ -999,25 +1014,25 @@ function showEditProductModal(productId) {
             <input type="number" id="edit-product-min" min="1" value="${product.minQuantity}" required>
         </div>
     `;
-    
+
     showModal(modalTitle, modalBody, 'Salvar', () => {
         const name = document.getElementById('edit-product-name').value;
         const quantity = parseInt(document.getElementById('edit-product-quantity').value);
         const minQuantity = parseInt(document.getElementById('edit-product-min').value);
-        
+
         if (!name || isNaN(quantity) || isNaN(minQuantity)) {
             alert('Preencha todos os campos corretamente!');
             return false;
         }
-        
+
         product.name = name;
         product.quantity = quantity;
         product.minQuantity = minQuantity;
-        
+
         saveToLocalStorage();
         displayProductList();
         displayStockAlerts();
-        
+
         return true;
     });
 }
@@ -1026,7 +1041,7 @@ function showEditProductModal(productId) {
 function showRestockModal(productId) {
     const product = systemData.products.find(p => p.id === parseInt(productId));
     if (!product) return;
-    
+
     const modalTitle = `Repor Estoque - ${product.name}`;
     const modalBody = `
         <p>Quantidade atual: ${product.quantity} (mínimo recomendado: ${product.minQuantity})</p>
@@ -1035,22 +1050,22 @@ function showRestockModal(productId) {
             <input type="number" id="restock-quantity" min="1" value="${product.minQuantity - product.quantity + 1}" required>
         </div>
     `;
-    
+
     showModal(modalTitle, modalBody, 'Repor', () => {
         const quantityToAdd = parseInt(document.getElementById('restock-quantity').value);
-        
+
         if (isNaN(quantityToAdd) || quantityToAdd < 1) {
             alert('Informe uma quantidade válida!');
             return false;
         }
-        
+
         product.quantity += quantityToAdd;
         saveToLocalStorage();
         displayProductList();
         displayStockAlerts();
-        
+
         alert(`Estoque de ${product.name} atualizado para ${product.quantity} unidades`);
-        
+
         return true;
     });
 }
@@ -1072,30 +1087,30 @@ function showAddProductModal() {
             <input type="number" id="new-product-min" min="1" value="3" required>
         </div>
     `;
-    
+
     showModal(modalTitle, modalBody, 'Adicionar', () => {
         const name = document.getElementById('new-product-name').value;
         const quantity = parseInt(document.getElementById('new-product-quantity').value);
         const minQuantity = parseInt(document.getElementById('new-product-min').value);
-        
+
         if (!name || isNaN(quantity) || isNaN(minQuantity)) {
             alert('Preencha todos os campos corretamente!');
             return false;
         }
-        
+
         const newProduct = {
-            id: systemData.products.length > 0 ? 
+            id: systemData.products.length > 0 ?
                 Math.max(...systemData.products.map(p => p.id)) + 1 : 1,
             name,
             quantity,
             minQuantity
         };
-        
+
         systemData.products.push(newProduct);
         saveToLocalStorage();
         displayProductList();
         displayStockAlerts();
-        
+
         return true;
     });
 }
@@ -1127,27 +1142,27 @@ function showRecordSaleModal() {
             </select>
         </div>
     `;
-    
+
     showModal(modalTitle, modalBody, 'Registrar', () => {
         const productId = document.getElementById('sale-product').value;
         const quantity = parseInt(document.getElementById('sale-quantity').value);
         const clientId = document.getElementById('sale-client').value;
-        
+
         if (!productId || isNaN(quantity) || quantity < 1) {
             alert('Selecione um produto e informe uma quantidade válida!');
             return false;
         }
-        
+
         const product = systemData.products.find(p => p.id === parseInt(productId));
-        
+
         if (quantity > product.quantity) {
             alert(`Quantidade indisponível! Apenas ${product.quantity} unidades em estoque.`);
             return false;
         }
-        
+
         // Atualiza estoque
         product.quantity -= quantity;
-        
+
         // Se foi vendido para um cliente, registra no histórico
         if (clientId) {
             const clientDetails = systemData.clientDetails[clientId] || {
@@ -1156,21 +1171,21 @@ function showRecordSaleModal() {
                 productsUsed: [],
                 history: []
             };
-            
+
             const productName = product.name;
             if (!clientDetails.productsUsed.includes(productName)) {
                 clientDetails.productsUsed.push(productName);
             }
-            
+
             systemData.clientDetails[clientId] = clientDetails;
         }
-        
+
         saveToLocalStorage();
         displayProductList();
         displayStockAlerts();
-        
+
         alert(`Venda de ${quantity} ${product.name} registrada com sucesso!`);
-        
+
         return true;
     });
 }
@@ -1178,7 +1193,7 @@ function showRecordSaleModal() {
 // Configura gráfico de relatórios
 function setupReportsChart() {
     const ctx = document.getElementById('performance-chart').getContext('2d');
-    
+
     // Dados de exemplo
     const labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
     const data = {
@@ -1192,7 +1207,7 @@ function setupReportsChart() {
             tension: 0.4
         }]
     };
-    
+
     const config = {
         type: 'line',
         data: data,
@@ -1204,7 +1219,7 @@ function setupReportsChart() {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return 'R$ ' + context.raw.toFixed(2).replace('.', ',');
                         }
                     }
@@ -1214,7 +1229,7 @@ function setupReportsChart() {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        callback: function(value) {
+                        callback: function (value) {
                             return 'R$ ' + value;
                         }
                     }
@@ -1222,7 +1237,7 @@ function setupReportsChart() {
             }
         }
     };
-    
+
     new Chart(ctx, config);
 }
 
@@ -1230,12 +1245,12 @@ function setupReportsChart() {
 function generateReport() {
     const reportType = document.getElementById('report-type').value;
     const reportPeriod = document.getElementById('report-period').value;
-    
+
     // Simulação de geração de relatório
     let reportTitle = '';
     let reportData = '';
-    
-    switch(reportType) {
+
+    switch (reportType) {
         case 'monthly':
             reportTitle = 'Relatório Mensal';
             reportData = `
@@ -1257,7 +1272,7 @@ function generateReport() {
                 </div>
             `;
             break;
-            
+
         case 'weekly':
             reportTitle = 'Relatório Semanal';
             reportData = `
@@ -1275,7 +1290,7 @@ function generateReport() {
                 </div>
             `;
             break;
-            
+
         case 'services':
             reportTitle = 'Relatório por Serviço';
             reportData = `
@@ -1297,7 +1312,7 @@ function generateReport() {
                 </div>
             `;
             break;
-            
+
         case 'clients':
             reportTitle = 'Relatório por Cliente';
             reportData = `
@@ -1316,7 +1331,7 @@ function generateReport() {
             `;
             break;
     }
-    
+
     const reportResults = document.querySelector('.report-results');
     reportResults.querySelector('h3').textContent = reportTitle;
     reportResults.querySelector('.report-data').innerHTML = reportData;
@@ -1326,9 +1341,9 @@ function generateReport() {
 function generateWhatsAppLink() {
     const phone = systemData.user.phone.replace(/\D/g, '');
     const message = encodeURIComponent(`Olá! Gostaria de agendar um horário com você.`);
-    
+
     const link = `https://wa.me/${phone}?text=${message}`;
-    
+
     document.getElementById('whatsapp-link-text').value = link;
     document.getElementById('whatsapp-link').classList.remove('hidden');
 }
@@ -1338,7 +1353,7 @@ function copyWhatsAppLink() {
     const linkInput = document.getElementById('whatsapp-link-text');
     linkInput.select();
     document.execCommand('copy');
-    
+
     alert('Link copiado para a área de transferência!');
 }
 
@@ -1346,7 +1361,7 @@ function copyWhatsAppLink() {
 function syncWithSalon() {
     // Simulação de sincronização
     alert(`Sincronizando agenda com ${systemData.salonSync.salonName}...`);
-    
+
     // Aqui normalmente teria a integração com a API do software do salão
     setTimeout(() => {
         alert('Agenda sincronizada com sucesso!');
@@ -1357,39 +1372,39 @@ function syncWithSalon() {
 // Configura formulários
 function setupForms() {
     // Formulário de perfil
-    document.getElementById('profile-form').addEventListener('submit', function(e) {
+    document.getElementById('profile-form').addEventListener('submit', function (e) {
         e.preventDefault();
-        
+
         const name = document.getElementById('profile-name').value;
         const phone = document.getElementById('profile-phone').value;
         const services = document.getElementById('profile-services').value;
-        
+
         systemData.user.name = name;
         systemData.user.phone = phone;
         systemData.user.services = services;
-        
+
         saveToLocalStorage();
         displayUserInfo();
-        
+
         alert('Perfil atualizado com sucesso!');
     });
-    
+
     // Formulário de notificações
-    document.getElementById('notifications-form').addEventListener('submit', function(e) {
+    document.getElementById('notifications-form').addEventListener('submit', function (e) {
         e.preventDefault();
         alert('Configurações de notificação salvas!');
     });
-    
+
     // Formulário de sincronização com salão
-    document.getElementById('salon-sync-form').addEventListener('submit', function(e) {
+    document.getElementById('salon-sync-form').addEventListener('submit', function (e) {
         e.preventDefault();
-        
+
         systemData.salonSync = {
             salonName: document.getElementById('salon-name').value,
             software: document.getElementById('salon-software').value,
             frequency: document.getElementById('sync-frequency').value
         };
-        
+
         saveToLocalStorage();
         alert('Configurações de sincronização salvas!');
     });
@@ -1401,7 +1416,7 @@ function displayUserInfo() {
     document.getElementById('profile-name').value = systemData.user.name;
     document.getElementById('profile-phone').value = systemData.user.phone;
     document.getElementById('profile-services').value = systemData.user.services;
-    
+
     // Preenche formulário de sincronização se existirem dados
     if (systemData.salonSync) {
         document.getElementById('salon-name').value = systemData.salonSync.salonName || '';
