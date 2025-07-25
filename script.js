@@ -1,1226 +1,926 @@
-// Dados iniciais do sistema
-let systemData = {
-    user: {
-        name: "Carlos Silva",
-        phone: "+5511999999999",
-        services: "Corte, Coloração, Luzes, Escova"
+/**
+ * StudioERP - Sistema de gestão para cabeleireiros autônomos
+ * 
+ * Funcionalidades:
+ * - Dashboard com gráficos
+ * - Gestão de clientes
+ * - Controle de estoque
+ * - Persistência com localStorage
+ * - Totalmente responsivo
+ */
+
+// =============================================
+// 1. Sistema de Dados e Persistência
+// =============================================
+
+const DB = {
+    /**
+     * Obtém dados do localStorage
+     * @param {string} key - Chave de identificação
+     * @returns {any} Dados armazenados ou null
+     */
+    get(key) {
+        const data = localStorage.getItem(`studioERP_${key}`);
+        return data ? JSON.parse(data) : null;
     },
-    appointments: [
-        { id: 1, clientId: 1, date: "2023-06-15", time: "09:00", service: "Corte", status: "booked" },
-        { id: 2, clientId: 2, date: "2023-06-15", time: "10:30", service: "Coloração", status: "booked" },
-        { id: 3, clientId: 3, date: "2023-06-16", time: "14:00", service: "Luzes", status: "booked" },
-        { id: 4, date: "2023-06-16", time: "16:00", service: "Bloqueado", status: "blocked" }
-    ],
-    clients: [
-        { id: 1, name: "Ana Souza", phone: "+5511988888888", email: "ana@example.com", lastVisit: "2023-05-20" },
-        { id: 2, name: "João Santos", phone: "+5511977777777", email: "joao@example.com", lastVisit: "2023-04-15" },
-        { id: 3, name: "Maria Oliveira", phone: "+5511966666666", email: "maria@example.com", lastVisit: "2023-06-01" }
-    ],
-    clientDetails: {
-        1: {
-            hairType: "Cacheado",
-            allergies: "Nenhuma",
-            productsUsed: ["Shampoo Hidratação", "Máscara Reconstrução"],
-            history: [
-                { date: "2023-05-20", service: "Corte", notes: "Corte camadas" },
-                { date: "2023-03-10", service: "Coloração", notes: "Reflexo loiro" }
-            ]
-        },
-        2: {
-            hairType: "Liso",
-            allergies: "Amônia",
-            productsUsed: ["Tonalizante vegano"],
-            history: [
-                { date: "2023-04-15", service: "Coloração", notes: "Castanho médio" },
-                { date: "2023-02-05", service: "Corte", notes: "Social" }
-            ]
-        },
-        3: {
-            hairType: "Ondulado",
-            allergies: "Nenhuma",
-            productsUsed: ["Shampoo clareador", "Máscara dourada"],
-            history: [
-                { date: "2023-06-01", service: "Luzes", notes: "Mechas finas" },
-                { date: "2023-04-20", service: "Hidratação", notes: "Profunda" }
-            ]
+
+    /**
+     * Armazena dados no localStorage
+     * @param {string} key - Chave de identificação
+     * @param {any} data - Dados a serem armazenados
+     */
+    set(key, data) {
+        localStorage.setItem(`studioERP_${key}`, JSON.stringify(data));
+    },
+
+    /**
+     * Inicializa dados padrão se não existirem
+     */
+    init() {
+        if (!this.get('services')) {
+            this.set('services', [
+                { id: 1, name: 'Corte', count: 45, color: '#16a34a', price: 60 },
+                { id: 2, name: 'Coloração', count: 28, color: '#ea580c', price: 120 },
+                { id: 3, name: 'Hidratação', count: 32, color: '#2563eb', price: 80 }
+            ]);
         }
-    },
-    products: [
-        { id: 1, name: "Shampoo Hidratação", quantity: 3, minQuantity: 5 },
-        { id: 2, name: "Tonalizante Vegano", quantity: 2, minQuantity: 3 },
-        { id: 3, name: "Máscara Reconstrução", quantity: 5, minQuantity: 4 },
-        { id: 4, name: "Descolorante", quantity: 6, minQuantity: 2 }
-    ],
-    salonSync: {
-        salonName: "Belle Salon",
-        software: "socabeleireiro",
-        frequency: "daily"
+
+        if (!this.get('clients')) {
+            this.set('clients', [
+                {
+                    id: 1,
+                    name: 'Ana Silva',
+                    phone: '(11) 98765-4321',
+                    email: 'ana@exemplo.com',
+                    hairType: 'Cacheado',
+                    allergies: ['Amônia'],
+                    lastVisit: '2023-07-15',
+                    totalVisits: 5
+                },
+                {
+                    id: 2,
+                    name: 'Carlos Oliveira',
+                    phone: '(11) 91234-5678',
+                    email: 'carlos@exemplo.com',
+                    hairType: 'Liso',
+                    allergies: [],
+                    lastVisit: '2023-07-10',
+                    totalVisits: 3
+                }
+            ]);
+        }
+
+        if (!this.get('inventory')) {
+            this.set('inventory', [
+                { id: 1, name: 'Shampoo Hidratante', quantity: 3, min: 5, price: 25.90 },
+                { id: 2, name: 'Tonalizante Violeta', quantity: 7, min: 3, price: 42.50 },
+                { id: 3, name: 'Máscara de Reconstrução', quantity: 2, min: 4, price: 68.00 }
+            ]);
+        }
     }
 };
 
-// Variáveis globais
-let currentWeek = 0; // Semana atual (0 = esta semana, 1 = próxima semana, -1 = semana passada)
-let currentClientView = null;
-let currentAppointmentView = null;
+// Inicializar banco de dados
+DB.init();
 
-// Inicialização do sistema
-document.addEventListener('DOMContentLoaded', function () {
-    // Carrega dados do localStorage se existirem
-    loadFromLocalStorage();
+// =============================================
+// 2. Sistema de Navegação
+// =============================================
 
-    // Configura elementos da interface
-    setupUI();
+/**
+ * Carrega a navegação principal
+ */
+function loadNavigation() {
+    const navLinks = [
+        { title: 'Dashboard', icon: '📊', id: 'dashboard' },
+        { title: 'Clientes', icon: '👥', id: 'clients' },
+        { title: 'Estoque', icon: '📦', id: 'inventory' },
+        { title: 'Relatórios', icon: '📈', id: 'reports' },
+        { title: 'Configurações', icon: '⚙️', id: 'settings' }
+    ];
 
-    // Exibe a semana atual
-    displayWeek(currentWeek);
+    const navContainer = document.getElementById('navLinks');
+    navContainer.innerHTML = navLinks.map(link => `
+    <a href="#" data-page="${link.id}" class="flex items-center p-3 rounded-lg hover:bg-gray-100 transition-colors">
+      <span class="mr-3">${link.icon}</span>
+      ${link.title}
+    </a>
+  `).join('');
 
-    // Carrega lista de clientes
-    displayClientList();
+    // Event listeners para navegação
+    document.querySelectorAll('#navLinks a').forEach(link => {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            const page = this.getAttribute('data-page');
+            loadPage(page);
 
-    // Carrega lista de produtos
-    displayProductList();
-
-    // Carrega alertas de estoque
-    displayStockAlerts();
-
-    // Configura gráfico de relatórios
-    setupReportsChart();
-
-    // Exibe informações do usuário
-    displayUserInfo();
-});
-
-// Configura elementos da interface
-function setupUI() {
-    // Navegação entre seções
-    const menuItems = document.querySelectorAll('.sidebar nav li');
-    menuItems.forEach(item => {
-        item.addEventListener('click', function () {
-            // Remove a classe active de todos os itens
-            menuItems.forEach(i => i.classList.remove('active'));
-
-            // Adiciona a classe active ao item clicado
+            // Atualizar classe ativa
+            document.querySelectorAll('#navLinks a').forEach(a => a.classList.remove('active'));
             this.classList.add('active');
-
-            // Oculta todas as seções de conteúdo
-            document.querySelectorAll('.content-section').forEach(section => {
-                section.classList.remove('active');
-            });
-
-            // Exibe a seção correspondente
-            const sectionId = this.getAttribute('data-section') + '-section';
-            document.getElementById(sectionId).classList.add('active');
         });
     });
 
-    // Navegação entre abas nas configurações
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(button => {
-        button.addEventListener('click', function () {
-            // Remove a classe active de todos os botões
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-
-            // Adiciona a classe active ao botão clicado
-            this.classList.add('active');
-
-            // Oculta todas as abas de conteúdo
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-
-            // Exibe a aba correspondente
-            const tabId = this.getAttribute('data-tab') + '-tab';
-            document.getElementById(tabId).classList.add('active');
-        });
-    });
-
-    // Botão de navegação para a semana anterior
-    document.getElementById('prev-week').addEventListener('click', function () {
-        currentWeek--;
-        displayWeek(currentWeek);
-    });
-    // Botão de navegação para a próxima semana
-    document.getElementById('next-week').addEventListener('click', function () {
-        currentWeek++;
-        displayWeek(currentWeek);
-    });
-    // Botão de navegação para a semana atual
-    document.getElementById('current-week').addEventListener('click', function () {
-        currentWeek = 0;
-        displayWeek(currentWeek);
-    });
-    // Botão de navegação para a agenda
-    document.getElementById('agenda-btn').addEventListener('click', function () {
-        currentWeek = 0; // Reseta para a semana atual
-        displayWeek(currentWeek);
-    });
-
-    // Botão de logout
-    document.getElementById('logout-btn').addEventListener('click', function () {
-        if (confirm('Deseja realmente sair do sistema?')) {
-            // Aqui normalmente teria uma lógica de logout
-            alert('Você foi desconectado do sistema');
-        }
-    });
-
-    // Botão para gerar link do WhatsApp
-    document.getElementById('whatsapp-btn').addEventListener('click', generateWhatsAppLink);
-    document.getElementById('copy-link').addEventListener('click', copyWhatsAppLink);
-
-    // Botão para adicionar bloqueio de horário
-    document.getElementById('add-block').addEventListener('click', showAddBlockModal);
-
-    // Botão para sincronizar agenda com salão
-    document.getElementById('sync-agenda').addEventListener('click', syncWithSalon);
-
-    // Botão para adicionar cliente
-    document.getElementById('add-client').addEventListener('click', showAddClientModal);
-
-    // Busca de clientes
-    document.getElementById('client-search').addEventListener('input', searchClients);
-
-    // Botão para adicionar produto
-    document.getElementById('add-product').addEventListener('click', showAddProductModal);
-
-    // Botão para registrar venda
-    document.getElementById('record-sale').addEventListener('click', showRecordSaleModal);
-
-    // Botão para gerar relatório
-    document.getElementById('generate-report').addEventListener('click', generateReport);
-
-    // Configuração do modal genérico
-    setupGenericModal();
-
-    // Configuração dos formulários
-    setupForms();
+    // Ativar dashboard por padrão
+    document.querySelector('#navLinks a[data-page="dashboard"]').classList.add('active');
 }
 
-// Exibe a semana na agenda
-function displayWeek(weekOffset) {
-    const today = new Date();
-    const currentDay = today.getDay(); // 0 = Domingo, 1 = Segunda, etc.
+/**
+ * Carrega uma página específica
+ * @param {string} page - Nome da página a ser carregada
+ */
+function loadPage(page) {
+    document.getElementById('pageTitle').textContent =
+        page.charAt(0).toUpperCase() + page.slice(1);
 
-    // Ajusta a data para o início da semana (Segunda-feira)
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() - currentDay + 1 + (weekOffset * 7));
-
-    // Atualiza o título da semana
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + 6);
-
-    const options = { day: 'numeric', month: 'long' };
-    const startStr = startDate.toLocaleDateString('pt-BR', options);
-    const endStr = endDate.toLocaleDateString('pt-BR', options);
-
-    document.getElementById('current-week').textContent = `${startStr} - ${endStr}`;
-
-    // Limpa o calendário
-    const calendar = document.querySelector('.calendar');
-    calendar.innerHTML = '';
-
-    // Dias da semana
-    const daysOfWeek = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
-
-    // Cria um container para cada dia da semana
-    for (let i = 0; i < 7; i++) {
-        const currentDate = new Date(startDate);
-        currentDate.setDate(startDate.getDate() + i);
-
-        const dateStr = formatDate(currentDate);
-        const dayContainer = document.createElement('div');
-        dayContainer.className = 'day-container';
-
-        // Cria o cabeçalho do dia
-        const dayHeader = document.createElement('div');
-        dayHeader.className = 'day-header';
-        dayHeader.textContent = `${daysOfWeek[i]} (${currentDate.getDate()}/${currentDate.getMonth() + 1})`;
-        dayContainer.appendChild(dayHeader);
-
-        // Cria os slots de tempo para o dia
-        const daySlots = document.createElement('div');
-        daySlots.className = 'time-slots';
-        daySlots.setAttribute('data-date', dateStr);
-
-        // Horários de trabalho: 9h às 18h, com intervalos de 30 minutos
-        for (let hour = 9; hour < 18; hour++) {
-            for (let minute = 0; minute < 60; minute += 30) {
-                const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-                const slotId = `${dateStr}-${timeStr}`;
-
-                const slot = document.createElement('div');
-                slot.className = 'time-slot available';
-                slot.textContent = timeStr;
-                slot.setAttribute('data-time', timeStr);
-                slot.setAttribute('data-slot-id', slotId);
-
-                // Verifica se há um agendamento neste horário
-                const appointment = systemData.appointments.find(a =>
-                    a.date === dateStr && a.time === timeStr
-                );
-
-                if (appointment) {
-                    slot.classList.remove('available');
-                    slot.classList.add(appointment.status === 'booked' ? 'booked' : 'blocked');
-
-                    if (appointment.status === 'booked') {
-                        const client = systemData.clients.find(c => c.id === appointment.clientId);
-                        slot.textContent = `${timeStr} - ${client.name} (${appointment.service})`;
-                    } else {
-                        slot.textContent = `${timeStr} - ${appointment.service}`;
-                    }
-
-                    slot.addEventListener('click', () => showAppointmentDetails(appointment.id));
-                } else {
-                    slot.addEventListener('click', () => showBookAppointmentModal(dateStr, timeStr));
-                }
-
-                daySlots.appendChild(slot);
-            }
-        }
-
-        dayContainer.appendChild(daySlots);
-        calendar.appendChild(dayContainer);
+    switch (page) {
+        case 'dashboard':
+            loadDashboard();
+            break;
+        case 'clients':
+            loadClients();
+            break;
+        case 'inventory':
+            loadInventory();
+            break;
+        case 'reports':
+            loadReports();
+            break;
+        case 'settings':
+            loadSettings();
+            break;
+        default:
+            document.getElementById('mainContent').innerHTML = `
+        <div class="bg-white p-6 rounded-lg shadow animate-fadeIn">
+          <h3 class="text-lg font-semibold">${page.charAt(0).toUpperCase() + page.slice(1)}</h3>
+          <p class="mt-2 text-gray-600">Conteúdo em desenvolvimento</p>
+        </div>
+      `;
     }
 }
 
-// Formata data como YYYY-MM-DD
-function formatDate(date) {
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`;
+// =============================================
+// 3. Páginas Principais
+// =============================================
+
+/**
+ * Carrega o dashboard principal
+ */
+function loadDashboard() {
+    const services = DB.get('services');
+    const clients = DB.get('clients');
+    const inventory = DB.get('inventory');
+
+    const content = `
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 animate-fadeIn">
+      <!-- Card: Total de Clientes -->
+      <div class="bg-white p-6 rounded-lg shadow card">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-purple-100 text-purple-600 mr-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-500">Total de Clientes</h3>
+            <p class="text-3xl font-bold text-gray-800">${clients.length}</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Card: Serviços (30 dias) -->
+      <div class="bg-white p-6 rounded-lg shadow card">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-green-100 text-green-600 mr-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-500">Serviços (30 dias)</h3>
+            <p class="text-3xl font-bold text-gray-800">${services.reduce((a, b) => a + b.count, 0)}</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Card: Estoque Baixo -->
+      <div class="bg-white p-6 rounded-lg shadow card">
+        <div class="flex items-center">
+          <div class="p-3 rounded-full bg-red-100 text-red-600 mr-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-500">Estoque Baixo</h3>
+            <p class="text-3xl font-bold text-gray-800">${inventory.filter(i => i.quantity < i.min).length}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Gráficos -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slideUp">
+      <!-- Gráfico de Serviços -->
+      <div class="bg-white p-6 rounded-lg shadow">
+        <h3 class="font-semibold mb-4">Serviços Mais Realizados</h3>
+        <div class="chart-container">
+          <canvas id="servicesChart"></canvas>
+        </div>
+      </div>
+      
+      <!-- Gráfico de Faturamento -->
+      <div class="bg-white p-6 rounded-lg shadow">
+        <h3 class="font-semibold mb-4">Faturamento Mensal</h3>
+        <div class="chart-container">
+          <canvas id="revenueChart"></canvas>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Clientes Recentes -->
+    <div class="bg-white p-6 rounded-lg shadow mt-6 animate-slideUp">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-semibold text-lg">Clientes Recentes</h3>
+        <button onclick="loadClients()" class="text-purple-600 hover:text-purple-800 text-sm font-medium">
+          Ver todos →
+        </button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        ${clients.slice(0, 3).map(client => `
+          <div class="border rounded-lg p-4 hover:shadow-md transition-shadow">
+            <div class="flex items-center">
+              <div class="bg-purple-100 text-purple-800 rounded-full w-10 h-10 flex items-center justify-center mr-3">
+                ${client.name.charAt(0)}
+              </div>
+              <div>
+                <p class="font-medium">${client.name}</p>
+                <p class="text-sm text-gray-500">Última visita: ${formatDate(client.lastVisit)}</p>
+              </div>
+            </div>
+            <div class="mt-3 pt-3 border-t flex justify-between items-center">
+              <span class="text-xs bg-gray-100 px-2 py-1 rounded">${client.hairType || 'Não informado'}</span>
+              <button onclick="renderClientForm(${client.id})" class="text-xs text-purple-600 hover:text-purple-800">
+                Editar
+              </button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+    document.getElementById('mainContent').innerHTML = content;
+    renderCharts();
 }
 
-// Exibe detalhes de um agendamento
-function showAppointmentDetails(appointmentId) {
-    const appointment = systemData.appointments.find(a => a.id === appointmentId);
-    if (!appointment) return;
+/**
+ * Carrega a página de clientes
+ */
+function loadClients() {
+    const clients = DB.get('clients');
 
-    const client = systemData.clients.find(c => c.id === appointment.clientId);
-    const detailsDiv = document.getElementById('appointment-details');
+    const content = `
+    <div class="bg-white rounded-lg shadow overflow-hidden animate-fadeIn">
+      <div class="p-4 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h3 class="font-semibold text-lg">Lista de Clientes</h3>
+        <div class="flex space-x-2 w-full md:w-auto">
+          <input type="text" id="clientSearch" placeholder="Buscar cliente..." 
+                 class="form-input flex-1 md:w-64 px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">
+          <button onclick="renderClientForm()" 
+                  class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 whitespace-nowrap">
+            + Novo Cliente
+          </button>
+        </div>
+      </div>
+      
+      <div class="overflow-x-auto table-responsive">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contato</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Última Visita</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Visitas</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200" id="clientsTableBody">
+            ${clients.map(client => `
+              <tr>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <div class="flex-shrink-0 h-10 w-10 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                      ${client.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div class="font-medium">${client.name}</div>
+                      <div class="text-sm text-gray-500">${client.hairType || 'Não informado'}</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="text-sm">${client.phone || '—'}</div>
+                  <div class="text-sm text-gray-500">${client.email || '—'}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">${formatDate(client.lastVisit)}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 py-1 text-xs rounded-full bg-gray-100">${client.totalVisits}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button onclick="renderClientForm(${client.id})" class="text-purple-600 hover:text-purple-900 mr-3">Editar</button>
+                  <button onclick="deleteClient(${client.id})" class="text-red-600 hover:text-red-900">Excluir</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
 
-    let html = `
-        <h3>Detalhes do Agendamento</h3>
-        <p><strong>Data:</strong> ${formatDisplayDate(appointment.date)}</p>
-        <p><strong>Horário:</strong> ${appointment.time}</p>
-    `;
+    document.getElementById('mainContent').innerHTML = content;
 
-    if (appointment.status === 'booked') {
-        html += `
-            <p><strong>Cliente:</strong> ${client.name}</p>
-            <p><strong>Serviço:</strong> ${appointment.service}</p>
-            <div class="appointment-actions">
-                <button id="cancel-appointment" data-id="${appointment.id}">Cancelar</button>
-                <button id="reschedule-appointment" data-id="${appointment.id}">Remarcar</button>
-            </div>
-        `;
+    // Adicionar busca em tempo real
+    document.getElementById('clientSearch').addEventListener('input', function (e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#clientsTableBody tr');
+
+        rows.forEach(row => {
+            const name = row.querySelector('td:first-child div.font-medium').textContent.toLowerCase();
+            row.style.display = name.includes(searchTerm) ? '' : 'none';
+        });
+    });
+}
+
+/**
+ * Carrega a página de estoque
+ */
+function loadInventory() {
+    const inventory = DB.get('inventory');
+    const lowStock = inventory.filter(i => i.quantity < i.min);
+
+    const content = `
+    ${lowStock.length > 0 ? `
+      <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 animate-fadeIn">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="ml-3">
+            <p class="text-sm text-red-700">
+              Você tem ${lowStock.length} produto(s) com estoque abaixo do mínimo recomendado.
+            </p>
+          </div>
+        </div>
+      </div>
+    ` : ''}
+    
+    <div class="bg-white rounded-lg shadow overflow-hidden animate-slideUp">
+      <div class="p-4 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h3 class="font-semibold text-lg">Gestão de Estoque</h3>
+        <div class="flex space-x-2 w-full md:w-auto">
+          <input type="text" id="inventorySearch" placeholder="Buscar produto..." 
+                 class="form-input flex-1 md:w-64 px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">
+          <button onclick="renderProductForm()" 
+                  class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 whitespace-nowrap">
+            + Adicionar Produto
+          </button>
+        </div>
+      </div>
+      
+      <div class="overflow-x-auto table-responsive">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Produto</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantidade</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mínimo</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Preço</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200" id="inventoryTableBody">
+            ${inventory.map(item => `
+              <tr class="${item.quantity < item.min ? 'bg-red-50' : ''}">
+                <td class="px-6 py-4 whitespace-nowrap font-medium">${item.name}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <input type="number" value="${item.quantity}" min="0"
+                         onchange="updateInventoryQuantity(${item.id}, this.value)"
+                         class="w-20 px-2 py-1 border rounded focus:ring-purple-500 focus:border-purple-500">
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">${item.min}</td>
+                <td class="px-6 py-4 whitespace-nowrap">R$ ${item.price.toFixed(2)}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  ${item.quantity < item.min
+            ? '<span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Baixo</span>'
+            : '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">OK</span>'}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button onclick="renderProductForm(${item.id})" class="text-purple-600 hover:text-purple-900 mr-3">Editar</button>
+                  <button onclick="deleteProduct(${item.id})" class="text-red-600 hover:text-red-900">Excluir</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+    document.getElementById('mainContent').innerHTML = content;
+
+    // Adicionar busca em tempo real
+    document.getElementById('inventorySearch').addEventListener('input', function (e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#inventoryTableBody tr');
+
+        rows.forEach(row => {
+            const name = row.querySelector('td:first-child').textContent.toLowerCase();
+            row.style.display = name.includes(searchTerm) ? '' : 'none';
+        });
+    });
+}
+
+/**
+ * Carrega a página de relatórios
+ */
+function loadReports() {
+    const content = `
+    <div class="grid grid-cols-1 gap-6">
+      <!-- Gráfico de Faturamento Anual -->
+      <div class="bg-white p-6 rounded-lg shadow animate-fadeIn">
+        <h3 class="font-semibold mb-4">Faturamento Anual</h3>
+        <div class="chart-container">
+          <canvas id="annualRevenueChart"></canvas>
+        </div>
+      </div>
+      
+      <!-- Gráfico de Tipos de Cliente -->
+      <div class="bg-white p-6 rounded-lg shadow animate-slideUp">
+        <h3 class="font-semibold mb-4">Perfil de Clientes</h3>
+        <div class="chart-container">
+          <canvas id="clientTypeChart"></canvas>
+        </div>
+      </div>
+      
+      <!-- Relatório de Serviços -->
+      <div class="bg-white p-6 rounded-lg shadow animate-slideUp">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-semibold">Relatório de Serviços</h3>
+          <button onclick="exportToExcel()" class="text-sm bg-green-100 text-green-800 px-3 py-1 rounded hover:bg-green-200">
+            Exportar para Excel
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serviço</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantidade</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Faturamento</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">% do Total</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              ${generateServicesReport()}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+    document.getElementById('mainContent').innerHTML = content;
+    renderReportsCharts();
+}
+
+// =============================================
+// 4. Formulários e CRUD
+// =============================================
+
+/**
+ * Renderiza o formulário de cliente
+ * @param {number|null} clientId - ID do cliente para edição ou null para novo
+ */
+function renderClientForm(clientId = null) {
+    const clients = DB.get('clients');
+    const client = clientId ? clients.find(c => c.id == clientId) : null;
+    const isEdit = client !== null;
+
+    const formHTML = `
+    <div class="bg-white rounded-lg shadow p-6 max-w-3xl mx-auto animate-fadeIn">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-lg font-semibold">${isEdit ? 'Editar' : 'Novo'} Cliente</h3>
+        <button onclick="loadClients()" class="text-gray-500 hover:text-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      
+      <form id="clientForm" class="space-y-6">
+        <input type="hidden" name="id" value="${isEdit ? client.id : ''}">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Nome -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+            <input type="text" name="name" value="${isEdit ? escapeHtml(client.name) : ''}" required
+                   class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">
+          </div>
+          
+          <!-- Telefone -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+            <input type="tel" name="phone" value="${isEdit ? escapeHtml(client.phone || '') : ''}"
+                   class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">
+          </div>
+        </div>
+        
+        <!-- Email -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+          <input type="email" name="email" value="${isEdit ? escapeHtml(client.email || '') : ''}"
+                 class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Tipo de Cabelo -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Cabelo</label>
+            <select name="hairType" class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">
+              <option value="">Selecione...</option>
+              <option value="Liso" ${isEdit && client.hairType === 'Liso' ? 'selected' : ''}>Liso</option>
+              <option value="Ondulado" ${isEdit && client.hairType === 'Ondulado' ? 'selected' : ''}>Ondulado</option>
+              <option value="Cacheado" ${isEdit && client.hairType === 'Cacheado' ? 'selected' : ''}>Cacheado</option>
+              <option value="Crespo" ${isEdit && client.hairType === 'Crespo' ? 'selected' : ''}>Crespo</option>
+            </select>
+          </div>
+          
+          <!-- Última Visita -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Última Visita</label>
+            <input type="date" name="lastVisit" value="${isEdit ? client.lastVisit : new Date().toISOString().split('T')[0]}"
+                   class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">
+          </div>
+        </div>
+        
+        <!-- Alergias -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Alergias</label>
+          <input type="text" name="allergies" 
+                 value="${isEdit && client.allergies ? escapeHtml(client.allergies.join(', ')) : ''}"
+                 placeholder="Separe por vírgulas (ex: Amônia, Parabenos)"
+                 class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">
+        </div>
+        
+        <!-- Observações -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+          <textarea name="notes" rows="3"
+                    class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">${isEdit ? escapeHtml(client.notes || '') : ''}</textarea>
+        </div>
+        
+        <div class="flex justify-end space-x-3 pt-4 border-t">
+          <button type="button" onclick="loadClients()" class="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors">
+            Cancelar
+          </button>
+          <button type="submit" class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+            ${isEdit ? 'Atualizar' : 'Salvar'} Cliente
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+
+    document.getElementById('mainContent').innerHTML = formHTML;
+
+    // Configurar envio do formulário
+    document.getElementById('clientForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        saveClient(this);
+    });
+}
+
+/**
+ * Salva os dados do cliente (cria ou atualiza)
+ * @param {HTMLFormElement} form - Formulário com os dados do cliente
+ */
+function saveClient(form) {
+    const formData = new FormData(form);
+    const clients = DB.get('clients');
+
+    const clientData = {
+        id: formData.get('id') ? parseInt(formData.get('id')) : Date.now(),
+        name: formData.get('name'),
+        phone: formData.get('phone'),
+        email: formData.get('email'),
+        hairType: formData.get('hairType'),
+        allergies: formData.get('allergies') ?
+            formData.get('allergies').split(',').map(a => a.trim()) : [],
+        lastVisit: formData.get('lastVisit'),
+        notes: formData.get('notes'),
+        totalVisits: formData.get('id') ?
+            clients.find(c => c.id == formData.get('id')).totalVisits : 1
+    };
+
+    if (formData.get('id')) {
+        // Atualizar cliente existente
+        const index = clients.findIndex(c => c.id == formData.get('id'));
+        if (index !== -1) {
+            clients[index] = clientData;
+        }
     } else {
-        html += `
-            <p><strong>Motivo:</strong> ${appointment.service}</p>
-            <div class="appointment-actions">
-                <button id="remove-block" data-id="${appointment.id}">Remover Bloqueio</button>
-            </div>
-        `;
+        // Adicionar novo cliente
+        clients.push(clientData);
     }
 
-    detailsDiv.innerHTML = html;
-    detailsDiv.classList.remove('hidden');
+    DB.set('clients', clients);
+    showAlert('success', `Cliente ${formData.get('id') ? 'atualizado' : 'cadastrado'} com sucesso!`);
+    loadClients();
+}
 
-    // Configura eventos dos botões
-    if (appointment.status === 'booked') {
-        document.getElementById('cancel-appointment').addEventListener('click', function () {
-            cancelAppointment(this.getAttribute('data-id'));
-        });
+/**
+ * Exclui um cliente
+ * @param {number} clientId - ID do cliente a ser excluído
+ */
+function deleteClient(clientId) {
+    if (confirm('Tem certeza que deseja excluir este cliente?')) {
+        const clients = DB.get('clients').filter(c => c.id != clientId);
+        DB.set('clients', clients);
+        showAlert('success', 'Cliente excluído com sucesso!');
+        loadClients();
+    }
+}
 
-        document.getElementById('reschedule-appointment').addEventListener('click', function () {
-            showRescheduleModal(this.getAttribute('data-id'));
-        });
+/**
+ * Renderiza o formulário de produto
+ * @param {number|null} productId - ID do produto para edição ou null para novo
+ */
+function renderProductForm(productId = null) {
+    const inventory = DB.get('inventory');
+    const product = productId ? inventory.find(p => p.id == productId) : null;
+    const isEdit = product !== null;
+
+    const formHTML = `
+    <div class="bg-white rounded-lg shadow p-6 max-w-3xl mx-auto animate-fadeIn">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-lg font-semibold">${isEdit ? 'Editar' : 'Novo'} Produto</h3>
+        <button onclick="loadInventory()" class="text-gray-500 hover:text-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      
+      <form id="productForm" class="space-y-6">
+        <input type="hidden" name="id" value="${isEdit ? product.id : ''}">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Nome -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+            <input type="text" name="name" value="${isEdit ? escapeHtml(product.name) : ''}" required
+                   class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">
+          </div>
+          
+          <!-- Quantidade -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade *</label>
+            <input type="number" name="quantity" min="0" value="${isEdit ? product.quantity : '0'}" required
+                   class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Quantidade Mínima -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Quantidade Mínima *</label>
+            <input type="number" name="minQuantity" min="1" value="${isEdit ? product.min : '1'}" required
+                   class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">
+          </div>
+          
+          <!-- Preço -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Preço (R$) *</label>
+            <input type="number" name="price" min="0" step="0.01" value="${isEdit ? product.price.toFixed(2) : '0.00'}" required
+                   class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">
+          </div>
+        </div>
+        
+        <!-- Categoria -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+          <select name="category" class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">
+            <option value="">Selecione...</option>
+            <option value="Shampoo" ${isEdit && product.category === 'Shampoo' ? 'selected' : ''}>Shampoo</option>
+            <option value="Condicionador" ${isEdit && product.category === 'Condicionador' ? 'selected' : ''}>Condicionador</option>
+            <option value="Tonalizante" ${isEdit && product.category === 'Tonalizante' ? 'selected' : ''}>Tonalizante</option>
+            <option value="Máscara" ${isEdit && product.category === 'Máscara' ? 'selected' : ''}>Máscara</option>
+            <option value="Outros" ${isEdit && product.category === 'Outros' ? 'selected' : ''}>Outros</option>
+          </select>
+        </div>
+        
+        <!-- Descrição -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+          <textarea name="description" rows="3"
+                    class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">${isEdit ? escapeHtml(product.description || '') : ''}</textarea>
+        </div>
+        
+        <div class="flex justify-end space-x-3 pt-4 border-t">
+          <button type="button" onclick="loadInventory()" class="bg-gray-200 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors">
+            Cancelar
+          </button>
+          <button type="submit" class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+            ${isEdit ? 'Atualizar' : 'Salvar'} Produto
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+
+    document.getElementById('mainContent').innerHTML = formHTML;
+
+    // Configurar envio do formulário
+    document.getElementById('productForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        saveProduct(this);
+    });
+}
+
+/**
+ * Salva os dados do produto (cria ou atualiza)
+ * @param {HTMLFormElement} form - Formulário com os dados do produto
+ */
+function saveProduct(form) {
+    const formData = new FormData(form);
+    const inventory = DB.get('inventory');
+
+    const productData = {
+        id: formData.get('id') ? parseInt(formData.get('id')) : Date.now(),
+        name: formData.get('name'),
+        quantity: parseInt(formData.get('quantity')),
+        min: parseInt(formData.get('minQuantity')),
+        price: parseFloat(formData.get('price')),
+        category: formData.get('category'),
+        description: formData.get('description')
+    };
+
+    if (formData.get('id')) {
+        // Atualizar produto existente
+        const index = inventory.findIndex(p => p.id == formData.get('id'));
+        if (index !== -1) {
+            inventory[index] = productData;
+        }
     } else {
-        document.getElementById('remove-block').addEventListener('click', function () {
-            removeBlock(this.getAttribute('data-id'));
-        });
+        // Adicionar novo produto
+        inventory.push(productData);
     }
 
-    currentAppointmentView = appointmentId;
+    DB.set('inventory', inventory);
+    showAlert('success', `Produto ${formData.get('id') ? 'atualizado' : 'cadastrado'} com sucesso!`);
+    loadInventory();
 }
 
-// Formata data para exibição (DD/MM/YYYY)
-function formatDisplayDate(dateStr) {
-    const [year, month, day] = dateStr.split('-');
-    return `${day}/${month}/${year}`;
-}
-
-// Cancela um agendamento
-function cancelAppointment(appointmentId) {
-    if (confirm('Deseja realmente cancelar este agendamento?')) {
-        systemData.appointments = systemData.appointments.filter(a => a.id !== parseInt(appointmentId));
-        saveToLocalStorage();
-        displayWeek(currentWeek);
-        document.getElementById('appointment-details').classList.add('hidden');
-        alert('Agendamento cancelado com sucesso!');
-    }
-}
-
-// Remove um bloqueio de horário
-function removeBlock(blockId) {
-    if (confirm('Deseja realmente remover este bloqueio de horário?')) {
-        systemData.appointments = systemData.appointments.filter(a => a.id !== parseInt(blockId));
-        saveToLocalStorage();
-        displayWeek(currentWeek);
-        document.getElementById('appointment-details').classList.add('hidden');
-        alert('Bloqueio removido com sucesso!');
-    }
-}
-
-// Exibe modal para adicionar bloqueio de horário
-function showAddBlockModal() {
-    const modalTitle = 'Adicionar Bloqueio de Horário';
-    const modalBody = `
-        <div class="form-group">
-            <label for="block-date">Data:</label>
-            <input type="date" id="block-date" required>
-        </div>
-        <div class="form-group">
-            <label for="block-time">Horário:</label>
-            <input type="time" id="block-time" step="1800" required>
-        </div>
-        <div class="form-group">
-            <label for="block-reason">Motivo:</label>
-            <input type="text" id="block-reason" placeholder="Ex.: Folga, Compromisso pessoal" required>
-        </div>
-    `;
-
-    showModal(modalTitle, modalBody, 'Adicionar', () => {
-        const date = document.getElementById('block-date').value;
-        const time = document.getElementById('block-time').value;
-        const reason = document.getElementById('block-reason').value;
-
-        if (!date || !time || !reason) {
-            alert('Preencha todos os campos!');
-            return false;
-        }
-
-        // Verifica se já existe um agendamento neste horário
-        const existingAppointment = systemData.appointments.find(a =>
-            a.date === date && a.time === time
-        );
-
-        if (existingAppointment) {
-            alert('Já existe um agendamento ou bloqueio neste horário!');
-            return false;
-        }
-
-        // Cria novo bloqueio
-        const newBlock = {
-            id: generateId(),
-            date,
-            time,
-            service: reason,
-            status: 'blocked'
-        };
-
-        systemData.appointments.push(newBlock);
-        saveToLocalStorage();
-        displayWeek(currentWeek);
-
-        return true;
-    });
-}
-
-// Exibe modal para agendar serviço
-function showBookAppointmentModal(date, time) {
-    const modalTitle = `Agendar Serviço - ${formatDisplayDate(date)} ${time}`;
-    const modalBody = `
-        <div class="form-group">
-            <label for="appointment-client">Cliente:</label>
-            <select id="appointment-client" required>
-                <option value="">Selecione um cliente...</option>
-                ${systemData.clients.map(client => `
-                    <option value="${client.id}">${client.name}</option>
-                `).join('')}
-                <option value="new">+ Cadastrar novo cliente</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="appointment-service">Serviço:</label>
-            <input type="text" id="appointment-service" list="services-list" required>
-            <datalist id="services-list">
-                <option value="Corte">
-                <option value="Coloração">
-                <option value="Luzes">
-                <option value="Escova">
-                <option value="Hidratação">
-                <option value="Progressiva">
-            </datalist>
-        </div>
-    `;
-
-    showModal(modalTitle, modalBody, 'Agendar', () => {
-        const clientId = document.getElementById('appointment-client').value;
-        const service = document.getElementById('appointment-service').value;
-
-        if (clientId === 'new') {
-            alert('Por favor, cadastre o cliente primeiro na seção de Clientes');
-            return false;
-        }
-
-        if (!clientId || !service) {
-            alert('Preencha todos os campos!');
-            return false;
-        }
-
-        // Cria novo agendamento
-        const newAppointment = {
-            id: generateId(),
-            clientId: parseInt(clientId),
-            date,
-            time,
-            service,
-            status: 'booked'
-        };
-
-        systemData.appointments.push(newAppointment);
-        saveToLocalStorage();
-        displayWeek(currentWeek);
-
-        // Envia confirmação (simulado)
-        const client = systemData.clients.find(c => c.id === parseInt(clientId));
-        alert(`Agendamento confirmado para ${client.name} às ${time} do dia ${formatDisplayDate(date)}`);
-
-        return true;
-    });
-}
-
-// Exibe modal para remarcar agendamento
-function showRescheduleModal(appointmentId) {
-    const appointment = systemData.appointments.find(a => a.id === parseInt(appointmentId));
-    if (!appointment) return;
-
-    const client = systemData.clients.find(c => c.id === appointment.clientId);
-    const modalTitle = `Remarcar Agendamento - ${client.name}`;
-
-    const modalBody = `
-        <p>Agendamento atual: ${formatDisplayDate(appointment.date)} ${appointment.time} - ${appointment.service}</p>
-        <div class="form-group">
-            <label for="new-date">Nova Data:</label>
-            <input type="date" id="new-date" required>
-        </div>
-        <div class="form-group">
-            <label for="new-time">Novo Horário:</label>
-            <input type="time" id="new-time" step="1800" required>
-        </div>
-    `;
-
-    showModal(modalTitle, modalBody, 'Remarcar', () => {
-        const newDate = document.getElementById('new-date').value;
-        const newTime = document.getElementById('new-time').value;
-
-        if (!newDate || !newTime) {
-            alert('Preencha todos os campos!');
-            return false;
-        }
-
-        // Verifica se já existe um agendamento neste novo horário
-        const existingAppointment = systemData.appointments.find(a =>
-            a.date === newDate && a.time === newTime && a.id !== appointment.id
-        );
-
-        if (existingAppointment) {
-            alert('Já existe um agendamento ou bloqueio neste horário!');
-            return false;
-        }
-
-        // Atualiza o agendamento
-        appointment.date = newDate;
-        appointment.time = newTime;
-        saveToLocalStorage();
-        displayWeek(currentWeek);
-        document.getElementById('appointment-details').classList.add('hidden');
-
-        // Envia confirmação (simulado)
-        alert(`Agendamento remarcado para ${newTime} do dia ${formatDisplayDate(newDate)}`);
-
-        return true;
-    });
-}
-
-// Gera ID único
-function generateId() {
-    return Math.max(0, ...systemData.appointments.map(a => a.id)) + 1;
-}
-
-// Configura o modal genérico
-function setupGenericModal() {
-    const modal = document.getElementById('generic-modal');
-    const closeBtn = document.querySelector('.close-modal');
-
-    // Fecha o modal ao clicar no X
-    closeBtn.addEventListener('click', () => {
-        modal.classList.add('hidden');
-    });
-
-    // Fecha o modal ao clicar fora
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.classList.add('hidden');
-        }
-    });
-
-    // Configura botão de cancelar
-    document.getElementById('modal-cancel').addEventListener('click', () => {
-        modal.classList.add('hidden');
-    });
-}
-
-// Exibe o modal genérico
-function showModal(title, body, confirmText, confirmCallback) {
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-body').innerHTML = body;
-    document.getElementById('modal-confirm').textContent = confirmText;
-
-    const modal = document.getElementById('generic-modal');
-    modal.classList.remove('hidden');
-
-    // Configura ação do botão de confirmar
-    document.getElementById('modal-confirm').onclick = function () {
-        if (confirmCallback()) {
-            modal.classList.add('hidden');
-        }
-    };
-}
-
-// Exibe lista de clientes
-function displayClientList() {
-    const clientList = document.querySelector('.client-list');
-    clientList.innerHTML = '';
-
-    systemData.clients.forEach(client => {
-        const clientCard = document.createElement('div');
-        clientCard.className = 'client-card';
-        clientCard.setAttribute('data-id', client.id);
-        clientCard.innerHTML = `
-            <h3>${client.name}</h3>
-            <p><i class="fas fa-phone"></i> ${client.phone}</p>
-            <p><i class="fas fa-calendar-alt"></i> Última visita: ${formatDisplayDate(client.lastVisit)}</p>
-        `;
-
-        clientCard.addEventListener('click', () => showClientDetails(client.id));
-        clientList.appendChild(clientCard);
-    });
-}
-
-// Exibe detalhes de um cliente
-function showClientDetails(clientId) {
-    const client = systemData.clients.find(c => c.id === parseInt(clientId));
-    if (!client) return;
-
-    const details = systemData.clientDetails[clientId] || {
-        hairType: 'Não informado',
-        allergies: 'Nenhuma',
-        productsUsed: [],
-        history: []
-    };
-
-    const detailsDiv = document.getElementById('client-details');
-
-    let html = `
-        <div class="client-header">
-            <h3>${client.name}</h3>
-            <button id="edit-client" data-id="${client.id}"><i class="fas fa-edit"></i> Editar</button>
-        </div>
-        
-        <div class="client-info">
-            <p><strong>Telefone:</strong> ${client.phone}</p>
-            ${client.email ? `<p><strong>E-mail:</strong> ${client.email}</p>` : ''}
-            <p><strong>Última visita:</strong> ${formatDisplayDate(client.lastVisit)}</p>
-        </div>
-        
-        <div class="client-hair-info">
-            <h4><i class="fas fa-cut"></i> Informações Capilares</h4>
-            <p><strong>Tipo de cabelo:</strong> ${details.hairType}</p>
-            <p><strong>Alergias:</strong> ${details.allergies}</p>
-            <p><strong>Produtos usados:</strong> ${details.productsUsed.join(', ') || 'Nenhum registrado'}</p>
-        </div>
-        
-        <div class="client-history">
-            <h4><i class="fas fa-history"></i> Histórico de Serviços</h4>
-            ${details.history.length > 0 ? `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Data</th>
-                            <th>Serviço</th>
-                            <th>Observações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${details.history.map(service => `
-                            <tr>
-                                <td>${formatDisplayDate(service.date)}</td>
-                                <td>${service.service}</td>
-                                <td>${service.notes}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            ` : '<p>Nenhum serviço registrado</p>'}
-        </div>
-        
-        <div class="client-actions">
-            <button id="new-service" data-id="${client.id}"><i class="fas fa-plus"></i> Novo Serviço</button>
-            <button id="send-promo" data-id="${client.id}"><i class="fas fa-gift"></i> Enviar Promoção</button>
-        </div>
-    `;
-
-    detailsDiv.innerHTML = html;
-    detailsDiv.classList.remove('hidden');
-
-    // Configura eventos dos botões
-    document.getElementById('edit-client').addEventListener('click', function () {
-        showEditClientModal(this.getAttribute('data-id'));
-    });
-
-    document.getElementById('new-service').addEventListener('click', function () {
-        showNewServiceModal(this.getAttribute('data-id'));
-    });
-
-    document.getElementById('send-promo').addEventListener('click', function () {
-        sendPromotionToClient(this.getAttribute('data-id'));
-    });
-
-    currentClientView = clientId;
-}
-
-// Exibe modal para editar cliente
-function showEditClientModal(clientId) {
-    const client = systemData.clients.find(c => c.id === parseInt(clientId));
-    if (!client) return;
-
-    const details = systemData.clientDetails[clientId] || {
-        hairType: '',
-        allergies: '',
-        productsUsed: [],
-        history: []
-    };
-
-    const modalTitle = `Editar Cliente - ${client.name}`;
-    const modalBody = `
-        <div class="form-group">
-            <label for="edit-name">Nome:</label>
-            <input type="text" id="edit-name" value="${client.name}" required>
-        </div>
-        <div class="form-group">
-            <label for="edit-phone">Telefone:</label>
-            <input type="tel" id="edit-phone" value="${client.phone}" required>
-        </div>
-        <div class="form-group">
-            <label for="edit-email">E-mail:</label>
-            <input type="email" id="edit-email" value="${client.email || ''}">
-        </div>
-        <div class="form-group">
-            <label for="edit-hair-type">Tipo de Cabelo:</label>
-            <input type="text" id="edit-hair-type" value="${details.hairType}">
-        </div>
-        <div class="form-group">
-            <label for="edit-allergies">Alergias:</label>
-            <input type="text" id="edit-allergies" value="${details.allergies}">
-        </div>
-        <div class="form-group">
-            <label for="edit-products">Produtos Usados (separados por vírgula):</label>
-            <textarea id="edit-products">${details.productsUsed.join(', ')}</textarea>
-        </div>
-    `;
-
-    showModal(modalTitle, modalBody, 'Salvar', () => {
-        const name = document.getElementById('edit-name').value;
-        const phone = document.getElementById('edit-phone').value;
-        const email = document.getElementById('edit-email').value;
-        const hairType = document.getElementById('edit-hair-type').value;
-        const allergies = document.getElementById('edit-allergies').value;
-        const products = document.getElementById('edit-products').value.split(',').map(p => p.trim());
-
-        if (!name || !phone) {
-            alert('Nome e telefone são obrigatórios!');
-            return false;
-        }
-
-        // Atualiza dados do cliente
-        client.name = name;
-        client.phone = phone;
-        client.email = email;
-
-        // Atualiza detalhes do cliente
-        systemData.clientDetails[clientId] = {
-            hairType,
-            allergies,
-            productsUsed: products,
-            history: details.history
-        };
-
-        saveToLocalStorage();
-        displayClientList();
-
-        if (currentClientView == clientId) {
-            showClientDetails(clientId);
-        }
-
-        return true;
-    });
-}
-
-// Exibe modal para adicionar cliente
-function showAddClientModal() {
-    const modalTitle = 'Adicionar Novo Cliente';
-    const modalBody = `
-        <div class="form-group">
-            <label for="new-name">Nome:</label>
-            <input type="text" id="new-name" required>
-        </div>
-        <div class="form-group">
-            <label for="new-phone">Telefone:</label>
-            <input type="tel" id="new-phone" required>
-        </div>
-        <div class="form-group">
-            <label for="new-email">E-mail:</label>
-            <input type="email" id="new-email">
-        </div>
-        <div class="form-group">
-            <label for="new-hair-type">Tipo de Cabelo:</label>
-            <input type="text" id="new-hair-type">
-        </div>
-        <div class="form-group">
-            <label for="new-allergies">Alergias:</label>
-            <input type="text" id="new-allergies" value="Nenhuma">
-        </div>
-    `;
-
-    showModal(modalTitle, modalBody, 'Adicionar', () => {
-        const name = document.getElementById('new-name').value;
-        const phone = document.getElementById('new-phone').value;
-        const email = document.getElementById('new-email').value;
-        const hairType = document.getElementById('new-hair-type').value;
-        const allergies = document.getElementById('new-allergies').value;
-
-        if (!name || !phone) {
-            alert('Nome e telefone são obrigatórios!');
-            return false;
-        }
-
-        // Cria novo cliente
-        const newClient = {
-            id: systemData.clients.length > 0 ?
-                Math.max(...systemData.clients.map(c => c.id)) + 1 : 1,
-            name,
-            phone,
-            email,
-            lastVisit: formatDate(new Date())
-        };
-
-        systemData.clients.push(newClient);
-
-        // Adiciona detalhes do cliente
-        systemData.clientDetails[newClient.id] = {
-            hairType,
-            allergies,
-            productsUsed: [],
-            history: []
-        };
-
-        saveToLocalStorage();
-        displayClientList();
-
-        return true;
-    });
-}
-
-// Exibe modal para registrar novo serviço
-function showNewServiceModal(clientId) {
-    const client = systemData.clients.find(c => c.id === parseInt(clientId));
-    if (!client) return;
-
-    const modalTitle = `Registrar Serviço - ${client.name}`;
-    const modalBody = `
-        <div class="form-group">
-            <label for="service-date">Data:</label>
-            <input type="date" id="service-date" value="${formatDate(new Date())}" required>
-        </div>
-        <div class="form-group">
-            <label for="service-type">Serviço:</label>
-            <input type="text" id="service-type" list="services-list" required>
-        </div>
-        <div class="form-group">
-            <label for="service-notes">Observações:</label>
-            <textarea id="service-notes" rows="3"></textarea>
-        </div>
-        <div class="form-group">
-            <label for="service-products">Produtos Utilizados (separados por vírgula):</label>
-            <textarea id="service-products" rows="2"></textarea>
-        </div>
-    `;
-
-    showModal(modalTitle, modalBody, 'Registrar', () => {
-        const date = document.getElementById('service-date').value;
-        const service = document.getElementById('service-type').value;
-        const notes = document.getElementById('service-notes').value;
-        const products = document.getElementById('service-products').value.split(',').map(p => p.trim());
-
-        if (!date || !service) {
-            alert('Data e serviço são obrigatórios!');
-            return false;
-        }
-
-        // Adiciona ao histórico
-        const details = systemData.clientDetails[clientId] || {
-            hairType: '',
-            allergies: '',
-            productsUsed: [],
-            history: []
-        };
-
-        details.history.unshift({
-            date,
-            service,
-            notes
-        });
-
-        // Adiciona produtos usados (sem duplicatas)
-        products.forEach(product => {
-            if (product && !details.productsUsed.includes(product)) {
-                details.productsUsed.push(product);
+/**
+ * Atualiza a quantidade de um produto no estoque
+ * @param {number} productId - ID do produto
+ * @param {number} quantity - Nova quantidade
+ */
+function updateInventoryQuantity(productId, quantity) {
+    const inventory = DB.get('inventory');
+    const product = inventory.find(p => p.id == productId);
+
+    if (product) {
+        product.quantity = parseInt(quantity);
+        DB.set('inventory', inventory);
+
+        // Atualizar visualização se necessário
+        const row = document.querySelector(`#inventoryTableBody tr[data-id="${productId}"]`);
+        if (row) {
+            row.classList.toggle('bg-red-50', product.quantity < product.min);
+            const statusCell = row.querySelector('td:nth-child(5)');
+            if (statusCell) {
+                statusCell.innerHTML = product.quantity < product.min
+                    ? '<span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Baixo</span>'
+                    : '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">OK</span>';
             }
-        });
-
-        // Atualiza última visita
-        client.lastVisit = date;
-
-        systemData.clientDetails[clientId] = details;
-        saveToLocalStorage();
-
-        if (currentClientView == clientId) {
-            showClientDetails(clientId);
         }
-
-        return true;
-    });
-}
-
-// Envia promoção para cliente
-function sendPromotionToClient(clientId) {
-    const client = systemData.clients.find(c => c.id === parseInt(clientId));
-    if (!client) return;
-
-    alert(`Promoção enviada para ${client.name} (${client.phone}) via WhatsApp`);
-    // Na implementação real, aqui seria feita a integração com a API do WhatsApp
-}
-
-// Busca clientes
-function searchClients() {
-    const searchTerm = this.value.toLowerCase();
-    const clientCards = document.querySelectorAll('.client-card');
-
-    clientCards.forEach(card => {
-        const clientName = card.querySelector('h3').textContent.toLowerCase();
-        const clientPhone = card.querySelector('p:nth-of-type(1)').textContent.toLowerCase();
-
-        if (clientName.includes(searchTerm) || clientPhone.includes(searchTerm)) {
-            card.style.display = 'block';
-        } else {
-            card.style.display = 'none';
-        }
-    });
-}
-
-// Exibe lista de produtos
-function displayProductList() {
-    const productList = document.querySelector('.product-list');
-    productList.innerHTML = '';
-
-    systemData.products.forEach(product => {
-        const productCard = document.createElement('div');
-        productCard.className = 'product-card';
-
-        const isLowStock = product.quantity <= product.minQuantity;
-        const stockClass = isLowStock ? 'stock-low' : 'stock-ok';
-        const stockText = isLowStock ?
-            `⚠️ ${product.quantity} (mínimo: ${product.minQuantity})` :
-            `${product.quantity} em estoque`;
-
-        productCard.innerHTML = `
-            <div class="product-info">
-                <h3>${product.name}</h3>
-                <p>Código: ${product.id.toString().padStart(3, '0')}</p>
-            </div>
-            <div class="product-stock">
-                <p class="${stockClass}">${stockText}</p>
-                <button class="edit-product" data-id="${product.id}"><i class="fas fa-edit"></i></button>
-            </div>
-        `;
-
-        productCard.querySelector('.edit-product').addEventListener('click', (e) => {
-            e.stopPropagation();
-            showEditProductModal(product.id);
-        });
-
-        productList.appendChild(productCard);
-    });
-}
-
-// Exibe alertas de estoque
-function displayStockAlerts() {
-    const alertsContainer = document.getElementById('alerts-container');
-    alertsContainer.innerHTML = '';
-
-    const lowStockProducts = systemData.products.filter(p => p.quantity <= p.minQuantity);
-
-    if (lowStockProducts.length === 0) {
-        alertsContainer.innerHTML = '<p class="no-alerts">Nenhum alerta de estoque baixo</p>';
-        return;
     }
-
-    lowStockProducts.forEach(product => {
-        const alertItem = document.createElement('div');
-        alertItem.className = 'alert-item';
-        alertItem.innerHTML = `
-            <span>${product.name} - ${product.quantity} restantes (mínimo: ${product.minQuantity})</span>
-            <button class="restock-btn" data-id="${product.id}">Repor</button>
-        `;
-
-        alertItem.querySelector('.restock-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            showRestockModal(product.id);
-        });
-
-        alertsContainer.appendChild(alertItem);
-    });
 }
 
-// Exibe modal para editar produto
-function showEditProductModal(productId) {
-    const product = systemData.products.find(p => p.id === parseInt(productId));
-    if (!product) return;
-
-    const modalTitle = `Editar Produto - ${product.name}`;
-    const modalBody = `
-        <div class="form-group">
-            <label for="edit-product-name">Nome:</label>
-            <input type="text" id="edit-product-name" value="${product.name}" required>
-        </div>
-        <div class="form-group">
-            <label for="edit-product-quantity">Quantidade:</label>
-            <input type="number" id="edit-product-quantity" min="0" value="${product.quantity}" required>
-        </div>
-        <div class="form-group">
-            <label for="edit-product-min">Quantidade Mínima:</label>
-            <input type="number" id="edit-product-min" min="1" value="${product.minQuantity}" required>
-        </div>
-    `;
-
-    showModal(modalTitle, modalBody, 'Salvar', () => {
-        const name = document.getElementById('edit-product-name').value;
-        const quantity = parseInt(document.getElementById('edit-product-quantity').value);
-        const minQuantity = parseInt(document.getElementById('edit-product-min').value);
-
-        if (!name || isNaN(quantity) || isNaN(minQuantity)) {
-            alert('Preencha todos os campos corretamente!');
-            return false;
-        }
-
-        product.name = name;
-        product.quantity = quantity;
-        product.minQuantity = minQuantity;
-
-        saveToLocalStorage();
-        displayProductList();
-        displayStockAlerts();
-
-        return true;
-    });
+/**
+ * Exclui um produto
+ * @param {number} productId - ID do produto a ser excluído
+ */
+function deleteProduct(productId) {
+    if (confirm('Tem certeza que deseja excluir este produto?')) {
+        const inventory = DB.get('inventory').filter(p => p.id != productId);
+        DB.set('inventory', inventory);
+        showAlert('success', 'Produto excluído com sucesso!');
+        loadInventory();
+    }
 }
 
-// Exibe modal para repor estoque
-function showRestockModal(productId) {
-    const product = systemData.products.find(p => p.id === parseInt(productId));
-    if (!product) return;
+// =============================================
+// 5. Gráficos e Relatórios
+// =============================================
 
-    const modalTitle = `Repor Estoque - ${product.name}`;
-    const modalBody = `
-        <p>Quantidade atual: ${product.quantity} (mínimo recomendado: ${product.minQuantity})</p>
-        <div class="form-group">
-            <label for="restock-quantity">Quantidade a adicionar:</label>
-            <input type="number" id="restock-quantity" min="1" value="${product.minQuantity - product.quantity + 1}" required>
-        </div>
-    `;
+/**
+ * Renderiza os gráficos do dashboard
+ */
+function renderCharts() {
+    const services = DB.get('services');
 
-    showModal(modalTitle, modalBody, 'Repor', () => {
-        const quantityToAdd = parseInt(document.getElementById('restock-quantity').value);
-
-        if (isNaN(quantityToAdd) || quantityToAdd < 1) {
-            alert('Informe uma quantidade válida!');
-            return false;
-        }
-
-        product.quantity += quantityToAdd;
-        saveToLocalStorage();
-        displayProductList();
-        displayStockAlerts();
-
-        alert(`Estoque de ${product.name} atualizado para ${product.quantity} unidades`);
-
-        return true;
-    });
-}
-
-// Exibe modal para adicionar produto
-function showAddProductModal() {
-    const modalTitle = 'Adicionar Novo Produto';
-    const modalBody = `
-        <div class="form-group">
-            <label for="new-product-name">Nome:</label>
-            <input type="text" id="new-product-name" required>
-        </div>
-        <div class="form-group">
-            <label for="new-product-quantity">Quantidade Inicial:</label>
-            <input type="number" id="new-product-quantity" min="0" value="0" required>
-        </div>
-        <div class="form-group">
-            <label for="new-product-min">Quantidade Mínima:</label>
-            <input type="number" id="new-product-min" min="1" value="3" required>
-        </div>
-    `;
-
-    showModal(modalTitle, modalBody, 'Adicionar', () => {
-        const name = document.getElementById('new-product-name').value;
-        const quantity = parseInt(document.getElementById('new-product-quantity').value);
-        const minQuantity = parseInt(document.getElementById('new-product-min').value);
-
-        if (!name || isNaN(quantity) || isNaN(minQuantity)) {
-            alert('Preencha todos os campos corretamente!');
-            return false;
-        }
-
-        const newProduct = {
-            id: systemData.products.length > 0 ?
-                Math.max(...systemData.products.map(p => p.id)) + 1 : 1,
-            name,
-            quantity,
-            minQuantity
-        };
-
-        systemData.products.push(newProduct);
-        saveToLocalStorage();
-        displayProductList();
-        displayStockAlerts();
-
-        return true;
-    });
-}
-
-// Exibe modal para registrar venda
-function showRecordSaleModal() {
-    const modalTitle = 'Registrar Venda de Produto';
-    const modalBody = `
-        <div class="form-group">
-            <label for="sale-product">Produto:</label>
-            <select id="sale-product" required>
-                <option value="">Selecione um produto...</option>
-                ${systemData.products.map(product => `
-                    <option value="${product.id}">${product.name} (${product.quantity} em estoque)</option>
-                `).join('')}
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="sale-quantity">Quantidade:</label>
-            <input type="number" id="sale-quantity" min="1" value="1" required>
-        </div>
-        <div class="form-group">
-            <label for="sale-client">Cliente (opcional):</label>
-            <select id="sale-client">
-                <option value="">Nenhum cliente específico</option>
-                ${systemData.clients.map(client => `
-                    <option value="${client.id}">${client.name}</option>
-                `).join('')}
-            </select>
-        </div>
-    `;
-
-    showModal(modalTitle, modalBody, 'Registrar', () => {
-        const productId = document.getElementById('sale-product').value;
-        const quantity = parseInt(document.getElementById('sale-quantity').value);
-        const clientId = document.getElementById('sale-client').value;
-
-        if (!productId || isNaN(quantity) || quantity < 1) {
-            alert('Selecione um produto e informe uma quantidade válida!');
-            return false;
-        }
-
-        const product = systemData.products.find(p => p.id === parseInt(productId));
-
-        if (quantity > product.quantity) {
-            alert(`Quantidade indisponível! Apenas ${product.quantity} unidades em estoque.`);
-            return false;
-        }
-
-        // Atualiza estoque
-        product.quantity -= quantity;
-
-        // Se foi vendido para um cliente, registra no histórico
-        if (clientId) {
-            const clientDetails = systemData.clientDetails[clientId] || {
-                hairType: '',
-                allergies: '',
-                productsUsed: [],
-                history: []
-            };
-
-            const productName = product.name;
-            if (!clientDetails.productsUsed.includes(productName)) {
-                clientDetails.productsUsed.push(productName);
-            }
-
-            systemData.clientDetails[clientId] = clientDetails;
-        }
-
-        saveToLocalStorage();
-        displayProductList();
-        displayStockAlerts();
-
-        alert(`Venda de ${quantity} ${product.name} registrada com sucesso!`);
-
-        return true;
-    });
-}
-
-// Configura gráfico de relatórios
-function setupReportsChart() {
-    const ctx = document.getElementById('performance-chart').getContext('2d');
-
-    // Dados de exemplo
-    const labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
-    const data = {
-        labels: labels,
-        datasets: [{
-            label: 'Faturamento Mensal',
-            data: [1200, 1900, 1500, 2000, 1800, 2200],
-            backgroundColor: 'rgba(142, 68, 173, 0.2)',
-            borderColor: 'rgba(142, 68, 173, 1)',
-            borderWidth: 2,
-            tension: 0.4
-        }]
-    };
-
-    const config = {
-        type: 'line',
-        data: data,
+    // Gráfico de Serviços
+    const servicesCtx = document.getElementById('servicesChart').getContext('2d');
+    new Chart(servicesCtx, {
+        type: 'bar',
+        data: {
+            labels: services.map(s => s.name),
+            datasets: [{
+                label: 'Serviços Realizados (últimos 30 dias)',
+                data: services.map(s => s.count),
+                backgroundColor: services.map(s => s.color),
+                borderWidth: 1
+            }]
+        },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+
+    // Gráfico de Faturamento
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+
+    // Dados de exemplo - substitua pelos seus dados reais
+    const monthlyData = [5200, 4800, 6100, 5300, 5900, 6300]; // Faturamento mensal
+    const weeklyData = [1300, 1200, 1525, 1325, 1475, 1575];  // Semanal (mensal/4)
+    const dailyData = [186, 171, 218, 189, 211, 225];         // Diário (mensal/28)
+
+    new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+            datasets: [
+                // 1. Faturamento Mensal (Roxo)
+                {
+                    label: 'Mensal (R$)',
+                    data: monthlyData,
+                    borderColor: '#7e22ce',
+                    backgroundColor: 'rgba(126, 34, 206, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    borderWidth: 3
+                },
+                // 2. Faturamento Semanal (Azul)
+                {
+                    label: 'Semanal (R$)',
+                    data: weeklyData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.3,
+                    borderWidth: 2,
+                    borderDash: [5, 3]
+                },
+                // 3. Faturamento Diário (Verde)
+                {
+                    label: 'Diário (R$)',
+                    data: dailyData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.3,
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
             plugins: {
                 legend: {
                     position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
                 },
                 tooltip: {
                     callbacks: {
                         label: function (context) {
-                            return 'R$ ' + context.raw.toFixed(2).replace('.', ',');
+                            return `${context.dataset.label}: ${context.raw.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
                         }
                     }
                 }
@@ -1230,210 +930,368 @@ function setupReportsChart() {
                     beginAtZero: true,
                     ticks: {
                         callback: function (value) {
-                            return 'R$ ' + value;
+                            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                         }
                     }
                 }
             }
         }
+    });
+}
+
+/**
+ * Renderiza os gráficos de relatórios
+ */
+function renderReportsCharts() {
+    // Gráfico de Faturamento Anual
+    const annualCtx = document.getElementById('annualRevenueChart').getContext('2d');
+    new Chart(annualCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+            datasets: [
+                {
+                    label: 'Faturamento',
+                    data: [3200, 4200, 3800, 4500, 5200, 4800, 5100, 4900, 5300, 5500, 5800, 6200],
+                    backgroundColor: '#7e22ce'
+                },
+                {
+                    label: 'Comissões',
+                    data: [960, 1260, 1140, 1350, 1560, 1440, 1530, 1470, 1590, 1650, 1740, 1860],
+                    backgroundColor: '#22d3ee'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Faturamento Anual vs Comissões'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Gráfico de Tipos de Cliente
+    const clientTypeCtx = document.getElementById('clientTypeChart').getContext('2d');
+    new Chart(clientTypeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Novos', 'Recorrentes', 'Ocasionais'],
+            datasets: [{
+                data: [15, 25, 10],
+                backgroundColor: [
+                    '#16a34a',
+                    '#2563eb',
+                    '#d97706'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Gera o relatório de serviços
+ * @returns {string} HTML com as linhas da tabela
+ */
+function generateServicesReport() {
+    const services = DB.get('services');
+    const total = services.reduce((sum, service) => sum + (service.count * service.price), 0);
+
+    return services.map(service => {
+        const revenue = service.count * service.price;
+        const percentage = total > 0 ? (revenue / total * 100).toFixed(1) : 0;
+
+        return `
+      <tr>
+        <td class="px-6 py-4 whitespace-nowrap">${service.name}</td>
+        <td class="px-6 py-4 whitespace-nowrap">${service.count}</td>
+        <td class="px-6 py-4 whitespace-nowrap">R$ ${revenue.toFixed(2)}</td>
+        <td class="px-6 py-4 whitespace-nowrap">
+          <div class="flex items-center">
+            <div class="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+              <div class="bg-purple-600 h-2.5 rounded-full" style="width: ${percentage}%"></div>
+            </div>
+            <span>${percentage}%</span>
+          </div>
+        </td>
+      </tr>
+    `;
+    }).join('');
+}
+
+/**
+ * Exporta dados para Excel (simulado)
+ */
+function exportToExcel() {
+    showAlert('info', 'Funcionalidade de exportação será implementada!');
+    // Na implementação real, usar biblioteca como SheetJS
+}
+
+// =============================================
+// 6. Utilitários e Inicialização
+// =============================================
+
+/**
+ * Mostra um alerta na tela
+ * @param {string} type - Tipo de alerta (success, error, info, warning)
+ * @param {string} message - Mensagem a ser exibida
+ */
+function showAlert(type, message) {
+    const colors = {
+        success: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-200' },
+        error: { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-200' },
+        info: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200' },
+        warning: { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-200' }
     };
 
-    new Chart(ctx, config);
-}
+    const alert = document.createElement('div');
+    alert.className = `fixed top-4 right-4 p-4 rounded-lg border ${colors[type].bg} ${colors[type].text} ${colors[type].border} shadow-lg animate-slideDown z-50`;
+    alert.innerHTML = `
+    <div class="flex items-center">
+      <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+      <span>${message}</span>
+    </div>
+  `;
 
-// Gera relatório
-function generateReport() {
-    const reportType = document.getElementById('report-type').value;
-    const reportPeriod = document.getElementById('report-period').value;
+    document.body.appendChild(alert);
 
-    // Simulação de geração de relatório
-    let reportTitle = '';
-    let reportData = '';
-
-    switch (reportType) {
-        case 'monthly':
-            reportTitle = 'Relatório Mensal';
-            reportData = `
-                <div class="data-card">
-                    <h3>Faturamento Total</h3>
-                    <p>R$ 2.200,00</p>
-                </div>
-                <div class="data-card">
-                    <h3>Serviços Realizados</h3>
-                    <p>24</p>
-                </div>
-                <div class="data-card">
-                    <h3>Novos Clientes</h3>
-                    <p>5</p>
-                </div>
-                <div class="data-card">
-                    <h3>Produtos Vendidos</h3>
-                    <p>8</p>
-                </div>
-            `;
-            break;
-
-        case 'weekly':
-            reportTitle = 'Relatório Semanal';
-            reportData = `
-                <div class="data-card">
-                    <h3>Faturamento Total</h3>
-                    <p>R$ 850,00</p>
-                </div>
-                <div class="data-card">
-                    <h3>Serviços Realizados</h3>
-                    <p>9</p>
-                </div>
-                <div class="data-card">
-                    <h3>Horário Mais Movimentado</h3>
-                    <p>Sábado - 10:00</p>
-                </div>
-            `;
-            break;
-
-        case 'services':
-            reportTitle = 'Relatório por Serviço';
-            reportData = `
-                <div class="data-card">
-                    <h3>Corte</h3>
-                    <p>12 serviços</p>
-                </div>
-                <div class="data-card">
-                    <h3>Coloração</h3>
-                    <p>8 serviços</p>
-                </div>
-                <div class="data-card">
-                    <h3>Luzes</h3>
-                    <p>5 serviços</p>
-                </div>
-                <div class="data-card">
-                    <h3>Outros</h3>
-                    <p>3 serviços</p>
-                </div>
-            `;
-            break;
-
-        case 'clients':
-            reportTitle = 'Relatório por Cliente';
-            reportData = `
-                <div class="data-card">
-                    <h3>Maria Oliveira</h3>
-                    <p>4 visitas</p>
-                </div>
-                <div class="data-card">
-                    <h3>Ana Souza</h3>
-                    <p>3 visitas</p>
-                </div>
-                <div class="data-card">
-                    <h3>João Santos</h3>
-                    <p>2 visitas</p>
-                </div>
-            `;
-            break;
-    }
-
-    const reportResults = document.querySelector('.report-results');
-    reportResults.querySelector('h3').textContent = reportTitle;
-    reportResults.querySelector('.report-data').innerHTML = reportData;
-}
-
-// Gera link de agendamento via WhatsApp
-function generateWhatsAppLink() {
-    const phone = systemData.user.phone.replace(/\D/g, '');
-    const message = encodeURIComponent(`Olá! Gostaria de agendar um horário com você.`);
-
-    const link = `https://wa.me/${phone}?text=${message}`;
-
-    document.getElementById('whatsapp-link-text').value = link;
-    document.getElementById('whatsapp-link').classList.remove('hidden');
-}
-
-// Copia link do WhatsApp
-function copyWhatsAppLink() {
-    const linkInput = document.getElementById('whatsapp-link-text');
-    linkInput.select();
-    document.execCommand('copy');
-
-    alert('Link copiado para a área de transferência!');
-}
-
-// Sincroniza agenda com o salão
-function syncWithSalon() {
-    // Simulação de sincronização
-    alert(`Sincronizando agenda com ${systemData.salonSync.salonName}...`);
-
-    // Aqui normalmente teria a integração com a API do software do salão
     setTimeout(() => {
-        alert('Agenda sincronizada com sucesso!');
-        displayWeek(currentWeek);
-    }, 1500);
+        alert.classList.add('animate-fadeOut');
+        setTimeout(() => alert.remove(), 300);
+    }, 3000);
 }
 
-// Configura formulários
-function setupForms() {
-    // Formulário de perfil
-    document.getElementById('profile-form').addEventListener('submit', function (e) {
-        e.preventDefault();
+/**
+ * Formata uma data no formato DD/MM/AAAA
+ * @param {string} dateString - Data no formato ISO (YYYY-MM-DD)
+ * @returns {string} Data formatada
+ */
+function formatDate(dateString) {
+    if (!dateString) return 'Nunca';
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+}
 
-        const name = document.getElementById('profile-name').value;
-        const phone = document.getElementById('profile-phone').value;
-        const services = document.getElementById('profile-services').value;
+/**
+ * Escapa HTML para prevenir XSS
+ * @param {string} text - Texto a ser escapado
+ * @returns {string} Texto seguro
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
-        systemData.user.name = name;
-        systemData.user.phone = phone;
-        systemData.user.services = services;
+/**
+ * Inicializa o menu mobile
+ */
+function initMobileMenu() {
+    document.getElementById('mobileMenuBtn').addEventListener('click', function () {
+        document.getElementById('mobileMenu').classList.remove('hidden');
+        const navLinks = document.getElementById('navLinks').innerHTML;
+        document.getElementById('mobileNavLinks').innerHTML = navLinks;
 
-        saveToLocalStorage();
-        displayUserInfo();
-
-        alert('Perfil atualizado com sucesso!');
+        // Adicionar eventos aos links mobile
+        document.querySelectorAll('#mobileNavLinks a').forEach(link => {
+            link.addEventListener('click', function () {
+                document.getElementById('mobileMenu').classList.add('hidden');
+                const page = this.getAttribute('data-page');
+                loadPage(page);
+            });
+        });
     });
 
-    // Formulário de notificações
-    document.getElementById('notifications-form').addEventListener('submit', function (e) {
-        e.preventDefault();
-        alert('Configurações de notificação salvas!');
-    });
-
-    // Formulário de sincronização com salão
-    document.getElementById('salon-sync-form').addEventListener('submit', function (e) {
-        e.preventDefault();
-
-        systemData.salonSync = {
-            salonName: document.getElementById('salon-name').value,
-            software: document.getElementById('salon-software').value,
-            frequency: document.getElementById('sync-frequency').value
-        };
-
-        saveToLocalStorage();
-        alert('Configurações de sincronização salvas!');
+    document.getElementById('closeMobileMenu').addEventListener('click', function () {
+        document.getElementById('mobileMenu').classList.add('hidden');
     });
 }
 
-// Exibe informações do usuário
-function displayUserInfo() {
-    document.getElementById('username').textContent = systemData.user.name;
-    document.getElementById('profile-name').value = systemData.user.name;
-    document.getElementById('profile-phone').value = systemData.user.phone;
-    document.getElementById('profile-services').value = systemData.user.services;
+// Inicialização do sistema quando o DOM estiver pronto
+// Inicialização do sistema quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+    loadNavigation();
+    loadDashboard();
+    initMobileMenu();
+    initProfileModal(); // Adicione esta linha
+});
 
-    // Preenche formulário de sincronização se existirem dados
-    if (systemData.salonSync) {
-        document.getElementById('salon-name').value = systemData.salonSync.salonName || '';
-        document.getElementById('salon-software').value = systemData.salonSync.software || '';
-        document.getElementById('sync-frequency').value = systemData.salonSync.frequency || 'daily';
-    }
+// Estilos para animações (adicionados dinamicamente)
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  .animate-slideDown {
+    animation: slideDown 0.3s ease-out;
+  }
+  .animate-fadeOut {
+    animation: fadeOut 0.3s ease-out;
+  }
+`;
+document.head.appendChild(style);
+
+// =============================================
+// 7. Configurações e Perfil
+// =============================================
+
+/**
+ * Carrega a página de configurações
+ */
+function loadSettings() {
+    const content = `
+    <div class="bg-white rounded-lg shadow p-6 animate-fadeIn">
+      <h3 class="text-lg font-semibold mb-6">Configurações</h3>
+      
+      <div class="space-y-6">
+        <!-- Seção de Perfil -->
+        <div class="border-b pb-6">
+          <h4 class="font-medium text-gray-800 mb-4">Perfil Profissional</h4>
+          <div class="flex flex-col md:flex-row gap-6">
+            <div class="flex-shrink-0">
+              <div class="relative">
+                <img id="settingsProfileImage" src="https://via.placeholder.com/150" class="w-20 h-20 rounded-full object-cover border-2 border-purple-200">
+                <label for="settingsImageUpload" class="absolute bottom-0 right-0 bg-purple-600 text-white p-1 rounded-full cursor-pointer hover:bg-purple-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </label>
+                <input type="file" id="settingsImageUpload" accept="image/*" class="hidden">
+              </div>
+            </div>
+            <div class="flex-1 space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
+                <input type="text" id="settingsName" class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500" value="Márcio Silva">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                <input type="tel" id="settingsPhone" class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500" value="(11) 98765-4321">
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Seção de Dados Profissionais -->
+        <div class="border-b pb-6">
+          <h4 class="font-medium text-gray-800 mb-4">Dados Profissionais</h4>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Especialidades</label>
+              <input type="text" id="settingsSpecialties" class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500" value="Coloração, Cortes Modernos, Luzes">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Descrição Profissional</label>
+              <textarea id="settingsBio" rows="3" class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">Especialista em coloração e cortes modernos com 10 anos de experiência.</textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Anos de Experiência</label>
+              <input type="number" id="settingsExperience" min="0" class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500" value="10">
+            </div>
+          </div>
+        </div>
+        
+        <!-- Seção de Preferências -->
+        <div>
+          <h4 class="font-medium text-gray-800 mb-4">Preferências do Sistema</h4>
+          <div class="space-y-4">
+            <div class="flex items-center">
+              <input type="checkbox" id="settingsDarkMode" class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
+              <label for="settingsDarkMode" class="ml-2 block text-sm text-gray-700">Modo Escuro</label>
+            </div>
+            <div class="flex items-center">
+              <input type="checkbox" id="settingsNotifications" checked class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded">
+              <label for="settingsNotifications" class="ml-2 block text-sm text-gray-700">Receber notificações</label>
+            </div>
+          </div>
+        </div>
+        
+        <div class="pt-4 border-t flex justify-end">
+          <button onclick="saveSettings()" class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+            Salvar Configurações
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+    document.getElementById('mainContent').innerHTML = content;
+
+    // Configurar upload de imagem
+    document.getElementById('settingsImageUpload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                document.getElementById('settingsProfileImage').src = event.target.result;
+                // Aqui você pode salvar no localStorage se quiser
+            };
+            reader.readAsDataURL(file);
+        }
+    });
 }
 
-// Salva dados no localStorage
-function saveToLocalStorage() {
-    localStorage.setItem('salonSystemData', JSON.stringify(systemData));
+/**
+ * Salva as configurações do perfil
+ */
+function saveSettings() {
+    // Aqui você pode implementar a lógica para salvar no localStorage
+    showAlert('success', 'Configurações salvas com sucesso!');
 }
 
-// Carrega dados do localStorage
-function loadFromLocalStorage() {
-    const savedData = localStorage.getItem('salonSystemData');
-    if (savedData) {
-        systemData = JSON.parse(savedData);
-    }
+/**
+ * Inicializa o modal de perfil
+ */
+function initProfileModal() {
+    document.getElementById('profileBtn').addEventListener('click', function() {
+        document.getElementById('profileModal').classList.remove('hidden');
+    });
+
+    // Configurar upload de imagem
+    document.getElementById('imageUpload').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                document.getElementById('profileImage').src = event.target.result;
+                // Aqui você pode salvar no localStorage se quiser
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
+
+/**
+ * Salva as alterações do perfil
+ */
+function saveProfile() {
+    // Aqui você pode implementar a lógica para salvar no localStorage
+    showAlert('success', 'Perfil atualizado com sucesso!');
+    document.getElementById('profileModal').classList.add('hidden');
 }

@@ -1,323 +1,130 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meu Salão - Gestão para Cabeleireiros</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudioERP - Gestão para Cabeleireiros</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <div class="container">
-        <!-- Cabeçalho -->
-        <header class="header">
-            <h1><i class="fas fa-scissors"></i> Meu Salão Profissional</h1>
-            <div class="user-info">
-                <span>Olá, <span id="username">Profissional</span></span>
-                <button id="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
-            </div>
-        </header>
+<body class="bg-gray-50">
+  <div class="flex h-screen">
+    <!-- Sidebar Desktop -->
+    <nav class="w-64 bg-white shadow-md p-4 hidden md:block">
+      <div class="flex items-center space-x-3 mb-8 p-2">
+        <div class="bg-purple-600 text-white p-2 rounded-lg">💇</div>
+        <h1 class="font-bold text-xl">StudioERP</h1>
+      </div>
+      <div class="space-y-2" id="navLinks">
+        <!-- Links serão inseridos via JS -->
+      </div>
+    </nav>
 
-        <!-- Menu Lateral -->
-        <aside class="sidebar">
-            <nav>
-                <ul>
-                    <li class="active" data-section="agenda"><i class="fas fa-calendar-alt"></i> Agenda</li>
-                    <li data-section="clientes"><i class="fas fa-users"></i> Clientes</li>
-                    <li data-section="estoque"><i class="fas fa-box-open"></i> Estoque</li>
-                    <li data-section="marketing"><i class="fas fa-bullhorn"></i> Marketing</li>
-                    <li data-section="relatorios"><i class="fas fa-chart-bar"></i> Relatórios</li>
-                    <li data-section="configuracoes"><i class="fas fa-cog"></i> Configurações</li>
-                </ul>
-            </nav>
-            
-            <div class="whatsapp-integration">
-                <h3><i class="fab fa-whatsapp"></i> WhatsApp</h3>
-                <button id="whatsapp-btn">Gerar Link de Agendamento</button>
-                <div id="whatsapp-link" class="hidden">
-                    <p>Seu link exclusivo:</p>
-                    <input type="text" id="whatsapp-link-text" readonly>
-                    <button id="copy-link">Copiar Link</button>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Conteúdo Principal -->
-        <main class="main-content">
-            <!-- Seção Agenda -->
-            <section id="agenda-section" class="content-section active">
-                <h2><i class="fas fa-calendar-alt"></i> Gestão de Agenda</h2>
-                
-                <div class="agenda-controls">
-                    <div class="date-navigation">
-                        <button id="prev-week"><i class="fas fa-chevron-left"></i></button>
-                        <h3 id="current-week">Semana Atual</h3>
-                        <button id="next-week"><i class="fas fa-chevron-right"></i></button>
-                    </div>
-                    
-                    <button id="add-block"><i class="fas fa-ban"></i> Bloquear Horário</button>
-                    <button id="sync-agenda"><i class="fas fa-sync-alt"></i> Sincronizar com Salão</button>
-                </div>
-                
-                <div class="calendar">
-                    <!-- Dias serão gerados dinamicamente via JavaScript -->
-                </div>
-                
-                <div class="appointment-details hidden" id="appointment-details">
-                    <!-- Detalhes do agendamento serão preenchidos via JavaScript -->
-                </div>
-            </section>
-
-            <!-- Seção Clientes -->
-            <section id="clientes-section" class="content-section">
-                <h2><i class="fas fa-users"></i> Gestão de Clientes</h2>
-                
-                <div class="client-actions">
-                    <button id="add-client"><i class="fas fa-plus"></i> Novo Cliente</button>
-                    <div class="search-box">
-                        <input type="text" id="client-search" placeholder="Buscar cliente...">
-                        <i class="fas fa-search"></i>
-                    </div>
-                </div>
-                
-                <div class="client-list">
-                    <!-- Lista de clientes será gerada dinamicamente via JavaScript -->
-                </div>
-                
-                <div class="client-details hidden" id="client-details">
-                    <!-- Detalhes do cliente serão preenchidos via JavaScript -->
-                </div>
-            </section>
-
-            <!-- Seção Estoque -->
-            <section id="estoque-section" class="content-section">
-                <h2><i class="fas fa-box-open"></i> Gestão de Estoque</h2>
-                
-                <div class="stock-alerts">
-                    <h3><i class="fas fa-exclamation-triangle"></i> Alertas de Estoque</h3>
-                    <div id="alerts-container">
-                        <!-- Alertas serão gerados dinamicamente via JavaScript -->
-                    </div>
-                </div>
-                
-                <div class="stock-actions">
-                    <button id="add-product"><i class="fas fa-plus"></i> Adicionar Produto</button>
-                    <button id="record-sale"><i class="fas fa-cash-register"></i> Registrar Venda</button>
-                </div>
-                
-                <div class="product-list">
-                    <!-- Lista de produtos será gerada dinamicamente via JavaScript -->
-                </div>
-            </section>
-
-            <!-- Seção Marketing -->
-            <section id="marketing-section" class="content-section">
-                <h2><i class="fas fa-bullhorn"></i> Ferramentas de Marketing</h2>
-                
-                <div class="social-integration">
-                    <h3><i class="fas fa-share-alt"></i> Integração com Redes Sociais</h3>
-                    <div class="social-buttons">
-                        <button class="social-btn instagram"><i class="fab fa-instagram"></i> Instagram</button>
-                        <button class="social-btn facebook"><i class="fab fa-facebook-f"></i> Facebook</button>
-                        <button class="social-btn whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</button>
-                    </div>
-                </div>
-                
-                <div class="promotion-tools">
-                    <h3><i class="fas fa-gift"></i> Ferramentas Promocionais</h3>
-                    <div class="promo-options">
-                        <div class="promo-card">
-                            <h4>Cupom de Desconto</h4>
-                            <p>Crie cupons personalizados para seus clientes</p>
-                            <button class="promo-btn">Criar Cupom</button>
-                        </div>
-                        <div class="promo-card">
-                            <h4>Programa de Fidelidade</h4>
-                            <p>Implemente um sistema de pontos para clientes frequentes</p>
-                            <button class="promo-btn">Configurar</button>
-                        </div>
-                        <div class="promo-card">
-                            <h4>Campanhas SMS/WhatsApp</h4>
-                            <p>Envie promoções para sua lista de clientes</p>
-                            <button class="promo-btn">Criar Campanha</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Seção Relatórios -->
-            <section id="relatorios-section" class="content-section">
-                <h2><i class="fas fa-chart-bar"></i> Relatórios de Desempenho</h2>
-                
-                <div class="report-filters">
-                    <div class="filter-group">
-                        <label for="report-type">Tipo de Relatório:</label>
-                        <select id="report-type">
-                            <option value="monthly">Mensal</option>
-                            <option value="weekly">Semanal</option>
-                            <option value="services">Por Serviço</option>
-                            <option value="clients">Por Cliente</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="report-period">Período:</label>
-                        <select id="report-period">
-                            <option value="current">Este Mês</option>
-                            <option value="last">Mês Anterior</option>
-                            <option value="quarter">Últimos 3 Meses</option>
-                            <option value="custom">Personalizado</option>
-                        </select>
-                    </div>
-                    
-                    <button id="generate-report"><i class="fas fa-chart-pie"></i> Gerar Relatório</button>
-                </div>
-                
-                <div class="report-results">
-                    <div class="chart-container">
-                        <canvas id="performance-chart"></canvas>
-                    </div>
-                    
-                    <div class="report-data">
-                        <!-- Dados do relatório serão gerados dinamicamente via JavaScript -->
-                    </div>
-                </div>
-            </section>
-
-            <!-- Seção Configurações -->
-            <section id="configuracoes-section" class="content-section">
-                <h2><i class="fas fa-cog"></i> Configurações</h2>
-                
-                <div class="settings-tabs">
-                    <div class="tab-buttons">
-                        <button class="tab-btn active" data-tab="profile">Perfil</button>
-                        <button class="tab-btn" data-tab="notifications">Notificações</button>
-                        <button class="tab-btn" data-tab="integrations">Integrações</button>
-                        <button class="tab-btn" data-tab="salon-sync">Sincronização com Salão</button>
-                    </div>
-                    
-                    <div class="tab-content active" id="profile-tab">
-                        <form id="profile-form">
-                            <div class="form-group">
-                                <label for="profile-name">Nome Profissional:</label>
-                                <input type="text" id="profile-name" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="profile-phone">Telefone (WhatsApp):</label>
-                                <input type="tel" id="profile-phone" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="profile-services">Serviços Oferecidos:</label>
-                                <textarea id="profile-services" rows="3"></textarea>
-                            </div>
-                            
-                            <button type="submit" class="save-btn">Salvar Alterações</button>
-                        </form>
-                    </div>
-                    
-                    <div class="tab-content" id="notifications-tab">
-                        <h3>Configurações de Notificação</h3>
-                        <form id="notifications-form">
-                            <div class="form-group checkbox">
-                                <input type="checkbox" id="email-notifications" checked>
-                                <label for="email-notifications">Receber notificações por e-mail</label>
-                            </div>
-                            
-                            <div class="form-group checkbox">
-                                <input type="checkbox" id="whatsapp-notifications" checked>
-                                <label for="whatsapp-notifications">Receber notificações por WhatsApp</label>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="reminder-time">Lembrete de Agendamento (horas antes):</label>
-                                <select id="reminder-time">
-                                    <option value="1">1 hora</option>
-                                    <option value="2">2 horas</option>
-                                    <option value="24" selected>1 dia</option>
-                                    <option value="48">2 dias</option>
-                                </select>
-                            </div>
-                            
-                            <button type="submit" class="save-btn">Salvar Configurações</button>
-                        </form>
-                    </div>
-                    
-                    <div class="tab-content" id="integrations-tab">
-                        <h3>Integrações com Redes Sociais</h3>
-                        <div class="integration-card">
-                            <div class="integration-header">
-                                <i class="fab fa-instagram"></i>
-                                <h4>Instagram</h4>
-                                <button class="connect-btn">Conectar</button>
-                            </div>
-                            <p>Conecte seu perfil profissional para agendamentos diretos</p>
-                        </div>
-                        
-                        <div class="integration-card">
-                            <div class="integration-header">
-                                <i class="fab fa-whatsapp"></i>
-                                <h4>WhatsApp Business</h4>
-                                <button class="connect-btn">Conectar</button>
-                            </div>
-                            <p>Ative mensagens automáticas e respostas rápidas</p>
-                        </div>
-                    </div>
-                    
-                    <div class="tab-content" id="salon-sync-tab">
-                        <h3>Sincronização com o Salão</h3>
-                        <form id="salon-sync-form">
-                            <div class="form-group">
-                                <label for="salon-name">Nome do Salão:</label>
-                                <input type="text" id="salon-name">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="salon-software">Software Utilizado pelo Salão:</label>
-                                <select id="salon-software">
-                                    <option value="">Selecione...</option>
-                                    <option value="socabeleireiro">SóCabeleireiro</option>
-                                    <option value="phodos">Phôdos</option>
-                                    <option value="salonline">SalonLine</option>
-                                    <option value="outro">Outro</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="sync-frequency">Frequência de Sincronização:</label>
-                                <select id="sync-frequency">
-                                    <option value="realtime">Tempo Real</option>
-                                    <option value="hourly">A Cada Hora</option>
-                                    <option value="daily" selected>Diariamente</option>
-                                    <option value="manual">Manual</option>
-                                </select>
-                            </div>
-                            
-                            <button type="submit" class="save-btn">Salvar Configurações</button>
-                        </form>
-                    </div>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <!-- Modal Genérico -->
-    <div class="modal hidden" id="generic-modal">
-        <div class="modal-content">
-            <span class="close-modal">&times;</span>
-            <h3 id="modal-title">Título do Modal</h3>
-            <div id="modal-body">
-                <!-- Conteúdo será injetado via JavaScript -->
-            </div>
-            <div class="modal-actions">
-                <button id="modal-cancel">Cancelar</button>
-                <button id="modal-confirm">Confirmar</button>
-            </div>
+    <!-- Conteúdo Principal -->
+    <div class="flex-1 overflow-auto">
+      <!-- Header Responsivo -->
+      <header class="bg-white shadow-sm p-4 flex justify-between items-center">
+        <!-- Botão Menu Mobile -->
+        <button id="mobileMenuBtn" class="md:hidden text-gray-500 hover:text-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        
+        <h2 id="pageTitle" class="text-xl font-semibold">Dashboard</h2>
+        
+        <!-- Perfil -->
+        <div class="flex items-center space-x-4">
+          <span class="text-sm hidden sm:inline">Olá, Márcio</span>
+          <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center cursor-pointer" id="profileBtn">
+            M
+          </div>
         </div>
-    </div>
+      </header>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="script.js"></script>
+      <main class="p-6" id="mainContent">
+        <!-- Conteúdo será carregado dinamicamente -->
+        <div id="dashboardContent">
+          <!-- Dashboard será carregado aqui -->
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Menu Mobile -->
+  <div id="mobileMenu" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden md:hidden">
+    <div class="bg-white h-full w-64 p-4 transform transition-transform">
+      <div class="flex justify-between items-center mb-8">
+        <div class="flex items-center space-x-3">
+          <div class="bg-purple-600 text-white p-2 rounded-lg">💇</div>
+          <h1 class="font-bold text-xl">StudioERP</h1>
+        </div>
+        <button id="closeMobileMenu" class="text-gray-500 hover:text-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="space-y-2" id="mobileNavLinks">
+        <!-- Links serão inseridos via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Perfil -->
+  <div id="profileModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md animate-fadeIn">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Meu Perfil</h3>
+        <button onclick="document.getElementById('profileModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="space-y-4">
+        <div class="flex flex-col items-center">
+          <div class="relative mb-4">
+            <img id="profileImage" src="https://via.placeholder.com/150" class="w-24 h-24 rounded-full object-cover border-2 border-purple-200">
+            <label for="imageUpload" class="absolute bottom-0 right-0 bg-purple-600 text-white p-1 rounded-full cursor-pointer hover:bg-purple-700">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </label>
+            <input type="file" id="imageUpload" accept="image/*" class="hidden">
+          </div>
+          <h3 id="profileName" class="text-lg font-medium">Márcio Silva</h3>
+          <p id="profileRole" class="text-sm text-gray-500">Cabeleireiro(a) Profissional</p>
+        </div>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+            <input type="tel" id="profilePhone" class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500" value="(11) 98765-4321">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Descrição Profissional</label>
+            <textarea id="profileBio" rows="3" class="form-input w-full px-4 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500">Especialista em coloração e cortes modernos com 10 anos de experiência.</textarea>
+          </div>
+          
+          <div class="pt-4 border-t flex justify-end space-x-3">
+            <button onclick="document.getElementById('profileModal').classList.add('hidden')" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors">
+              Cancelar
+            </button>
+            <button onclick="saveProfile()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+              Salvar Alterações
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>
